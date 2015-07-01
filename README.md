@@ -1,2 +1,2 @@
-# EasyUnityBuilder
-Python script help to build unity project easier.
+# UnityBuildUtility
+Utility to help build unity project easier
