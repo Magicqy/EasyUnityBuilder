@@ -110,8 +110,11 @@ class Invoker:
         print('logFile:         %s' %logFilePath)
         print('batchmode:       %s' %batch)
         print('quit:            %s' %quit)
-        print('argument list:')
-        print(self.argList)
+        for arg in self.argList:
+            if arg.startswith('-'):
+                print('')
+            print arg,
+        print('')
         return subprocess.call(argList)
 pass
 
@@ -127,7 +130,7 @@ if __name__ == '__main__':
         ivk.Append('UnityEditor.PlayerSettings.productName', 'UnityInvoker')
         ivk.Append('UnityEditor.BuildPipeline.BuildPlayer', '[Assets/Example.unity]', os.path.join(projPath, 'Example.apk'), 'Android', 'None')
         ivk.Append('UnityEditor.AssetDatabase.DeleteAsset', 'Assets/Example.unity')
-        ivk.Invoke(projPath, logFilePath = os.path.join(projPath, 'log.txt'))
+        ivk.Invoke(projPath)
 
     finally:
         Cleanup(projPath)
