@@ -44,18 +44,14 @@ else:
 HOME = os.path.dirname(sys.argv[0])
 
 def Init(projPath):
-    Copy(os.path.join(HOME, 'BuildUtility/BuildUtility.cs'), os.path.join(projPath, 'Assets/Editor/__BuildUtility__.cs'))
-    Copy(os.path.join(HOME, 'UnityInvoker/Assets/Editor/Invoker.cs'), os.path.join(projPath, 'Assets/Editor/__Invoker__.cs'))
+    Copy(os.path.join(HOME, 'BuildUtility/BuildUtility.cs'), os.path.join(projPath, 'Assets/Editor/_BuildUtility_/BuildUtility.cs'))
+    Copy(os.path.join(HOME, 'BuildUtility/Invoker/Invoker.cs'), os.path.join(projPath, 'Assets/Editor/_BuildUtility_/Invoker.cs'))
     pass
 
 def Cleanup(projPath):
-    filePath = os.path.join(projPath, 'Assets/Editor/__BuildUtility__.cs')
-    os.remove(filePath)
-    os.remove(filePath + '.meta')
-
-    filePath = os.path.join(projPath, 'Assets/Editor/__Invoker__.cs')
-    os.remove(filePath)
-    os.remove(filePath + '.meta')
+    targetPath = os.path.join(projPath, 'Assets/Editor/_BuildUtility_')
+    Del(targetPath)
+    Del(targetPath + '.meta')
     pass
 
 def Copy(src, dst):
@@ -84,16 +80,18 @@ def Copy(src, dst):
         shutil.copyfile(src, dst)
     pass
 
-def RemoveFrom(src, dst):
-    pass
+def Del(path):
+    if os.path.isfile(path):
+        os.remove(path)
+    elif os.path.isdir(path):
+        shutil.rmtree(path)
 
-
-projPath = os.path.join(HOME, 'UnityProject')
-
-try:
-    Init(projPath)
-    ret = subprocess.call([UNITY_EXE,
-                '-projectPath', projPath,
+if __name__ == '__main__':
+    projPath = os.path.join(HOME, 'UnityProject')
+    try:
+        Init(projPath)
+        ret = subprocess.call([UNITY_EXE,
+               '-projectPath', projPath,
                 '-batchmode', '-quit',
                 '-executeMethod', 'Invoker.Invoke',
                 'UnityEditor.EditorApplication.NewScene',
@@ -104,5 +102,5 @@ try:
                 '-next', 'UnityEditor.BuildPipeline.BuildPlayer', '[Assets/Example.unity]', '%s/Example.apk' %projPath, 'Android', 'None',
                 '-next', 'UnityEditor.AssetDatabase.DeleteAsset', 'Assets/Example.unity'
                 ])
-finally:
-    Cleanup(projPath)
+    finally:
+        Cleanup(projPath)

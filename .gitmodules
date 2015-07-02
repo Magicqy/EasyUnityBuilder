@@ -1,0 +1,3 @@
+[submodule "BuildUtility/Invoker"]
+	path = BuildUtility/Invoker
+	url = https://github.com/Magicqy/Invoker.git
