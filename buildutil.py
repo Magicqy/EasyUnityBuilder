@@ -18,6 +18,9 @@ import os
 	平台SDK集成
 '''
 
+#script home path
+HOME = os.path.dirname(sys.argv[0])
+
 #unity home path
 UNITY_HOME = os.environ.get('UNITY_HOME')
 if UNITY_HOME == None:
@@ -30,20 +33,17 @@ if sys.platform.startswith("win32"):
 elif sys.platform.startswith("darwin"):
     UNITY_EXE = os.path.join(UNITY_HOME, 'Unity.app/Contents/MacOS/Unity')
 else:
-    print('Unsupported platform %s' %platform)
+    print('Unsupported platform: ', platform)
     sys.exit(1)
 pass
 
-if os.path.exists(UNITY_EXE):
-    print('UnityPath: %s' %UNITY_EXE)
-else:
-    print("Unity installation not found")
+if os.path.exists(UNITY_EXE) == False:
+    print("Unity installation not found at: ", UNITY_EXE)
     sys.exit(1)
 
-#script home path
-HOME = os.path.dirname(sys.argv[0])
 
-def Init(projPath):
+#util methods
+def Setup(projPath):
     Copy(os.path.join(HOME, 'BuildUtility/BuildUtility.cs'), os.path.join(projPath, 'Assets/Editor/_BuildUtility_/BuildUtility.cs'))
     Copy(os.path.join(HOME, 'BuildUtility/Invoker/Invoker.cs'), os.path.join(projPath, 'Assets/Editor/_BuildUtility_/Invoker.cs'))
     pass
@@ -86,21 +86,48 @@ def Del(path):
     elif os.path.isdir(path):
         shutil.rmtree(path)
 
+class Invoker:
+    def __init__(self, methodName, *args):
+        self.argList = ['-executeMethod', 'Invoker.Invoke', methodName]
+        self.argList.extend(args)
+
+    def Append(self, methodName, *args):
+        self.argList.append('-next')
+        self.argList.append(methodName)
+        self.argList.extend(args)
+        return self
+
+    def Invoke(self, projPath, unityPath = UNITY_EXE, logFilePath = os.path.join(HOME, 'logFile.txt'), batch = True, quit = True):
+        argList = [unityPath, '-logFile', logFilePath, '-projectPath', projPath]
+        if batch:
+            argList.append('-batchmode')
+        if quit:
+            argList.append('-quit')
+        argList.extend(self.argList)
+
+        print('UnityPath:       %s' %unityPath)
+        print('projectPath:     %s' %projPath)
+        print('logFile:         %s' %logFilePath)
+        print('batchmode:       %s' %batch)
+        print('quit:            %s' %quit)
+        print('argument list:')
+        print(self.argList)
+        return subprocess.call(argList)
+pass
+
 if __name__ == '__main__':
-    projPath = os.path.join(HOME, 'UnityProject')
     try:
-        Init(projPath)
-        ret = subprocess.call([UNITY_EXE,
-               '-projectPath', projPath,
-                '-batchmode', '-quit',
-                '-executeMethod', 'Invoker.Invoke',
-                'UnityEditor.EditorApplication.NewScene',
-                '-next', 'UnityEngine.GameObject.CreatePrimitive', 'Cube',
-                '-next', 'UnityEditor.EditorApplication.SaveScene', 'Assets/Example.unity',
-                '-next', 'UnityEditor.PlayerSettings.bundleIdentifier', 'com.unityinvoker.example',
-                '-next', 'UnityEditor.PlayerSettings.productName', 'UnityInvoker',
-                '-next', 'UnityEditor.BuildPipeline.BuildPlayer', '[Assets/Example.unity]', '%s/Example.apk' %projPath, 'Android', 'None',
-                '-next', 'UnityEditor.AssetDatabase.DeleteAsset', 'Assets/Example.unity'
-                ])
+        projPath = os.path.join(HOME, 'UnityProject')
+        Setup(projPath)
+
+        ivk = Invoker('UnityEditor.EditorApplication.NewScene')
+        ivk.Append('UnityEngine.GameObject.CreatePrimitive', 'Cube')
+        ivk.Append('UnityEditor.EditorApplication.SaveScene', 'Assets/Example.unity')
+        ivk.Append('UnityEditor.PlayerSettings.bundleIdentifier', 'com.unityinvoker.example')
+        ivk.Append('UnityEditor.PlayerSettings.productName', 'UnityInvoker')
+        ivk.Append('UnityEditor.BuildPipeline.BuildPlayer', '[Assets/Example.unity]', os.path.join(projPath, 'Example.apk'), 'Android', 'None')
+        ivk.Append('UnityEditor.AssetDatabase.DeleteAsset', 'Assets/Example.unity')
+        ivk.Invoke(projPath, logFilePath = os.path.join(projPath, 'log.txt'))
+
     finally:
         Cleanup(projPath)
