@@ -5,7 +5,7 @@ VisualStudioVersion = 12.0.31101.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BuildUtility", "BuildUtility\BuildUtility.csproj", "{9DAEE2A2-BA89-4A83-9DB8-BCE222CCAC89}"
 EndProject
-Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "unitybuilder", "unitybuilder.pyproj", "{9E343C65-D619-4513-9805-6364041FC13D}"
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "buildutil", "buildutil.pyproj", "{9E343C65-D619-4513-9805-6364041FC13D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
