@@ -26,7 +26,6 @@ UNITY_HOME = os.environ.get('UNITY_HOME')
 if UNITY_HOME == None:
     print("Unity home path not found, please define it with an environment variable UNITY_HOME")
     sys.exit(1)
-pass
 
 if sys.platform.startswith("win32"):
     UNITY_EXE = os.path.join(UNITY_HOME, 'Unity.exe')
@@ -35,7 +34,6 @@ elif sys.platform.startswith("darwin"):
 else:
     print('Unsupported platform: ', platform)
     sys.exit(1)
-pass
 
 if os.path.exists(UNITY_EXE) == False:
     print("Unity installation not found at: ", UNITY_EXE)
@@ -49,9 +47,7 @@ def Setup(projPath):
     pass
 
 def Cleanup(projPath):
-    targetPath = os.path.join(projPath, 'Assets/Editor/_BuildUtility_')
-    Del(targetPath)
-    Del(targetPath + '.meta')
+    Del(os.path.join(projPath, 'Assets/Editor/_BuildUtility_'), True)
     pass
 
 def Copy(src, dst):
@@ -65,12 +61,12 @@ def Copy(src, dst):
         if os.path.exists(dst) == False:
             os.makedirs(dst)
         for item in os.listdir(src):
-            srcItem = os.path.join(src, item)
-            dstItem = os.path.join(dst, item)
-            if os.path.isfile(srcItem):
-                shutil.copyfile(srcItem, dstItem)
-            elif os.path.isdir(srcItem):
-                Copy(srcItem, dstItem)
+            srcPath = os.path.join(src, item)
+            dstPath = os.path.join(dst, item)
+            if os.path.isfile(srcPath):
+                shutil.copyfile(srcPath, dstPath)
+            elif os.path.isdir(srcPath):
+                Copy(srcPath, dstPath)
             else:
                 pass
     elif os.path.isfile(src):
@@ -80,11 +76,16 @@ def Copy(src, dst):
         shutil.copyfile(src, dst)
     pass
 
-def Del(path):
+def Del(path, alsoDelMetaFile = False):
     if os.path.isfile(path):
         os.remove(path)
     elif os.path.isdir(path):
         shutil.rmtree(path)
+    if alsoDelMetaFile:
+        path += '.meta'
+        if os.path.isfile(path):
+            os.remove(path)
+    pass
 
 class Invoker:
     def __init__(self, methodName, *args):
@@ -107,7 +108,7 @@ class Invoker:
 
         print('UnityPath:       %s' %unityPath)
         print('projectPath:     %s' %projPath)
-        print('logFile:         %s' %logFilePath)
+        print('logFilePath:     %s' %logFilePath)
         print('batchmode:       %s' %batch)
         print('quit:            %s' %quit)
         for arg in self.argList:
@@ -116,19 +117,20 @@ class Invoker:
             print arg,
         print('')
         return subprocess.call(argList)
-pass
+    pass
 
 if __name__ == '__main__':
     try:
         projPath = os.path.join(HOME, 'UnityProject')
         Setup(projPath)
 
-        ivk = Invoker('UnityEditor.EditorApplication.NewScene')
+        ivk = Invoker('Invoker+LogWriter.logFilePath', os.path.join(HOME, 'invoker.txt'))
+        ivk.Append('UnityEditor.EditorApplication.NewScene')
         ivk.Append('UnityEngine.GameObject.CreatePrimitive', 'Cube')
         ivk.Append('UnityEditor.EditorApplication.SaveScene', 'Assets/Example.unity')
         ivk.Append('UnityEditor.PlayerSettings.bundleIdentifier', 'com.unityinvoker.example')
         ivk.Append('UnityEditor.PlayerSettings.productName', 'UnityInvoker')
-        ivk.Append('UnityEditor.BuildPipeline.BuildPlayer', '[Assets/Example.unity]', os.path.join(projPath, 'Example.apk'), 'Android', 'None')
+        ivk.Append('UnityEditor.BuildPipeline.BuildPlayer', '[Assets/Example.unity]', os.path.join(HOME, 'Example.apk'), 'Android', 'None')
         ivk.Append('UnityEditor.AssetDatabase.DeleteAsset', 'Assets/Example.unity')
         ivk.Invoke(projPath)
 
