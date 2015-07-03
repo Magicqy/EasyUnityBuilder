@@ -114,25 +114,29 @@ class Invoker:
         for arg in self.argList:
             if arg.startswith('-'):
                 print('')
-            print arg,
+            else:
+                print(arg),
         print('')
         return subprocess.call(argList)
     pass
 
 if __name__ == '__main__':
-    try:
-        projPath = os.path.join(HOME, 'UnityProject')
-        Setup(projPath)
+    def TestInvokerBuild(projPath):
+        try:
+            Setup(projPath)
 
-        ivk = Invoker('Invoker+LogWriter.logFilePath', os.path.join(HOME, 'invoker.txt'))
-        ivk.Append('UnityEditor.EditorApplication.NewScene')
-        ivk.Append('UnityEngine.GameObject.CreatePrimitive', 'Cube')
-        ivk.Append('UnityEditor.EditorApplication.SaveScene', 'Assets/Example.unity')
-        ivk.Append('UnityEditor.PlayerSettings.bundleIdentifier', 'com.unityinvoker.example')
-        ivk.Append('UnityEditor.PlayerSettings.productName', 'UnityInvoker')
-        ivk.Append('UnityEditor.BuildPipeline.BuildPlayer', '[Assets/Example.unity]', os.path.join(HOME, 'Example.apk'), 'Android', 'None')
-        ivk.Append('UnityEditor.AssetDatabase.DeleteAsset', 'Assets/Example.unity')
-        ivk.Invoke(projPath)
+            ivk = Invoker('Invoker+LogWriter.logFilePath', os.path.join(HOME, 'invoker.txt'))
+            ivk.Append('UnityEditor.EditorApplication.NewScene')
+            ivk.Append('UnityEngine.GameObject.CreatePrimitive', 'Cube')
+            ivk.Append('UnityEditor.EditorApplication.SaveScene', 'Assets/Example.unity')
+            ivk.Append('UnityEditor.PlayerSettings.bundleIdentifier', 'com.unityinvoker.example')
+            ivk.Append('UnityEditor.PlayerSettings.productName', 'UnityInvoker')
+            ivk.Append('UnityEditor.BuildPipeline.BuildPlayer', '[Assets/Example.unity]', os.path.join(HOME, 'Example.apk'), 'Android', 'None')
+            ivk.Append('UnityEditor.AssetDatabase.DeleteAsset', 'Assets/Example.unity')
+            ivk.Invoke(projPath)
 
-    finally:
-        Cleanup(projPath)
+        finally:
+            Cleanup(projPath)
+        pass
+
+    TestInvokerBuild(os.path.join(HOME, 'UnityProject'))
