@@ -4,8 +4,51 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 
-public class BuildUtility
+public static class BuildUtility
 {
+    public static void DelSymbolForGroup(BuildTargetGroup group, string symbol)
+    {
+        var defines = PlayerSettings.GetScriptingDefineSymbolsForGroup(group);
+        var symbols = string.IsNullOrEmpty(defines) ? new List<string>() : new List<string>(defines.Split(';'));
+        symbols.Remove(symbol);
+        PlayerSettings.SetScriptingDefineSymbolsForGroup(group, string.Join(";", symbols.ToArray()));
+    }
+
+    public static void AddSymbolForGroup(BuildTargetGroup group, string symbol)
+    {
+        var defines = PlayerSettings.GetScriptingDefineSymbolsForGroup(group);
+        var symbols = string.IsNullOrEmpty(defines) ? new List<string>() : new List<string>(defines.Split(';'));
+        if (!symbols.Contains(symbol))
+        {
+            symbols.Add(symbol);
+        }
+        PlayerSettings.SetScriptingDefineSymbolsForGroup(group, string.Join(";", symbols.ToArray()));
+    }
+
+    public static void BuildPlayer(string outPath, BuildTarget target, BuildOptions opt)
+    {
+        List<string> levels = new List<string>();
+        foreach (var s in EditorBuildSettings.scenes)
+        {
+            if (s.enabled)
+                levels.Add(s.path);
+        }
+        if (levels.Count > 0)
+        {
+            var error = BuildPipeline.BuildPlayer(levels.ToArray(), outPath, target, opt);
+            if (!string.IsNullOrEmpty(error))
+            {
+                Debug.LogError(error);
+                EditorApplication.Exit(1);
+            }
+        }
+        else
+        {
+            Debug.LogError("There is no enabled scene found in build settings");
+            EditorApplication.Exit(1);
+        }
+    }
+
     public enum OptName
     {
         Identifier,
