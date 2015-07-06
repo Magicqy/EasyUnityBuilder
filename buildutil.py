@@ -86,6 +86,60 @@ def Del(path, alsoDelMetaFile = False):
             os.remove(path)
     pass
 
+class BuildTarget:
+    Android = 'Android'
+    iPhone = 'iPhone'
+    StandaloneWindows = 'StandaloneWindows'
+    StandaloneWindows64 = 'StandaloneWindows64'
+    StandaloneOSXIntel = 'StandaloneOSXIntel'
+    StandaloneOSXIntel64 = 'StandaloneOSXIntel64'
+    
+    btSwitch = {
+        'android' : Android,
+        'ios' : iPhone,
+        'win' : StandaloneWindows,
+        'win64' : StandaloneWindows64,
+        'osx' : StandaloneOSXIntel,
+        'osx64' : StandaloneOSXIntel64,
+        }
+
+    @staticmethod
+    def From(targetStr):
+        return BuildTarget.btSwitch[targetStr]
+    pass
+
+class PathUtil:
+    @staticmethod
+    def FullPath(path):
+        return os.path.abspath(os.path.expanduser(path))
+
+    extSwitch = {
+        BuildTarget.Android : lambda e, o: '.apk' if o and len(e) == 0 else e,
+        BuildTarget.iPhone : lambda e, o: '.ipa' if o and len(e) == 0 else e,
+        BuildTarget.StandaloneWindows : lambda e, o: '/bin.exe' if len(e) == 0 else e,
+        BuildTarget.StandaloneWindows64 : lambda e, o: '/bin.exe' if len(e) == 0 else e,
+        BuildTarget.StandaloneOSXIntel : lambda e, o: '.app' if len(e) == 0 else e,
+        BuildTarget.StandaloneOSXIntel64 : lambda e, o: '.app' if len(e) == 0 else e,
+    }
+    @staticmethod
+    def CorrectExt(outPath, buildTarget, buildOpts):
+        root, ext = os.path.splitext(outPath)
+        return root + PathUtil.extSwitch[buildTarget](ext, buildOpts.find(BuildOptions.AcceptExternalModificationsToPlayer) < 0)
+
+class BuildOptions:
+    AcceptExternalModificationsToPlayer = 'AcceptExternalModificationsToPlayer'
+    Development = 'Development'
+
+    @staticmethod
+    def From(opt, exp, dev):
+        bo = str(opt)
+        if exp:
+            bo = '%s|%s' %(bo, BuildOptions.AcceptExternalModificationsToPlayer)
+        if dev:
+            bo = '%s|%s' %(bo, BuildOptions.Development)
+        return bo
+    pass
+
 class Invoker:
     def __init__(self, methodName, *args):
         self.argList = ['-executeMethod', 'Invoker.Invoke', methodName]
@@ -97,7 +151,12 @@ class Invoker:
         self.argList.extend(args)
         return self
 
-    def Invoke(self, projPath, unityPath = UNITY_EXE, logFilePath = os.path.join(HOME, 'logFile.txt'), batch = True, quit = True):
+    def Invoke(self, projPath, unityPath = None, logFilePath = None, batch = True, quit = True):
+        if unityPath == None:
+            unityPath = UNITY_EXE
+        if logFilePath == None:
+            logFilePath = os.path.join(HOME, 'logFile.txt')
+        
         argList = [unityPath, '-logFile', logFilePath, '-projectPath', projPath]
         if batch:
             argList.append('-batchmode')
@@ -121,52 +180,18 @@ class Invoker:
         
         try:
             Setup(projPath)
+            print('')
             print(argList)
             return subprocess.call(argList)
         finally:
             Cleanup(projPath)
     pass
 
-#util methods
-class Util:
-    Android = 'Android'
-    iPhone = 'iPhone'
-    StandaloneWindows = 'StandaloneWindows'
-    StandaloneWindows64 = 'StandaloneWindows64'
-    StandaloneOSXIntel = 'StandaloneOSXIntel'
-    StandaloneOSXIntel64 = 'StandaloneOSXIntel64'
-    
-    @staticmethod
-    def BuildTarget(targetStr):
-        return {
-            'android' : Util.Android,
-            'ios' : Util.iPhone,
-            'win' : Util.StandaloneWindows,
-            'win64' : Util.StandaloneWindows64,
-            'osx' :Util.StandaloneOSXIntel,
-            'osx64' : Util.StandaloneOSXIntel64,
-            }[targetStr]
-
-    @staticmethod
-    def FullPath(path):
-        return os.path.abspath(os.path.expanduser(path))
-
-    @staticmethod
-    def CorrectExt(outPath, buildTarget):
-        root, ext = os.path.splitext(outPath)
-        return root + {
-            Util.Android : '.apk',
-            Util.iPhone : '',
-            Util.StandaloneWindows : '.exe',
-            Util.StandaloneWindows64 : '.exe',
-            Util.StandaloneOSXIntel : '.app',
-            Util.StandaloneOSXIntel64 : '.app',
-        }[buildTarget]
-    pass
-
-def ParseArgument(implictArgs = None):
+def ParseArgument(explicitArgs = None):
     #parse arguments
     parser = argparse.ArgumentParser(description = 'Build util for Unity')
+    parser.add_argument('-unity', help = 'unity file path')
+    parser.add_argument('-logFile', help = 'log file path')
     parser.add_argument('-nobatch', action = 'store_true', help = 'run unity without -batchmode')
     parser.add_argument('-noquit', action = 'store_true', help = 'run unity without -quit')
 
@@ -177,6 +202,7 @@ def ParseArgument(implictArgs = None):
     build.add_argument('outPath', help = 'output file path')
     build.add_argument('-opt', help = 'build options, see UnityEditor.BuildOptions for detail')
     build.add_argument('-exp', action = 'store_true', help = 'export project but not build it (android and ios only)')
+    build.add_argument('-dev', action = 'store_true', help = 'development version')
     build.set_defaults(func = BuildCmd)
 
     invoke = subparsers.add_parser('invoke', help = 'invoke method with arguments')
@@ -185,7 +211,7 @@ def ParseArgument(implictArgs = None):
     invoke.add_argument('args', nargs = '*', help = 'method arguments')
     invoke.set_defaults(func = InvokeCmd)
 
-    return parser.parse_args(implictArgs)
+    return parser.parse_args(explicitArgs)
     '''
     parser.add_argument('-bakdsym', action = 'store_true', help = 'backup dsym file after build')
     parser.add_argument('--svn', default = 'skip', choices = ['skip', 'up', 'reup'],
@@ -206,33 +232,38 @@ def ParseArgument(implictArgs = None):
     '''
 
 def BuildCmd(args):
-    projPath = Util.FullPath(args.projPath)
-    buildTarget = Util.BuildTarget(args.buildTarget)
-    #should correct ext by buildTarget?
-    outPath = Util.FullPath(args.outPath)
-    buildOpts = (str(args.opt) + '|AcceptExternalModificationsToPlayer') if args.exp else str(args.opt)
+    projPath = PathUtil.FullPath(args.projPath)
+    buildTarget = BuildTarget.From(args.buildTarget)
+    buildOpts = BuildOptions.From(args.opt, args.exp, args.dev)
+    outPath = PathUtil.CorrectExt(PathUtil.FullPath(args.outPath), buildTarget, buildOpts)
 
+    #cleanup
     Del(outPath)
+    if buildTarget == BuildTarget.StandaloneWindows or buildTarget == BuildTarget.StandaloneWindows64:
+        Del(os.path.splitext(outPath)[0] + '_Data')
+
     dir = os.path.dirname(outPath)
     if not os.path.exists(dir):
         os.makedirs(dir)
 
     ivk = Invoker('BuildUtility.BuildPlayer', outPath, buildTarget, buildOpts)
-    ivk.Invoke(projPath, batch = not args.nobatch, quit = not args.noquit)
+    ivk.Invoke(projPath, args.unity, args.logFile, not args.nobatch, not args.noquit)
     pass
 
 def InvokeCmd(args):
+    ivk = Invoker(args.methodName, args.args)
+    ivk.Invoke(projPath, args.unity, args.logFile, not args.nobatch, not args.noquit)
     pass
 
 if __name__ == '__main__':
-    args = ParseArgument('build ./UnityProject android ./android.apk'.split())
+    args = ParseArgument('build ./UnityProject android ./android'.split())
     args.func(args)
     
     args = ParseArgument('build ./UnityProject ios ./ios'.split())
     args.func(args)
     
-    args = ParseArgument('build ./UnityProject win ./win/bin.exe'.split())
+    args = ParseArgument('build ./UnityProject win ./win'.split())
     args.func(args)
     
-    args = ParseArgument('build ./UnityProject osx ./osx.app'.split())
+    args = ParseArgument('build ./UnityProject osx ./osx'.split())
     args.func(args)
