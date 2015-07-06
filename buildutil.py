@@ -256,14 +256,20 @@ def InvokeCmd(args):
     pass
 
 if __name__ == '__main__':
-    args = ParseArgument('build ./UnityProject android ./android'.split())
-    args.func(args)
+    if os.environ.get('LAUNCH_DEV'):
+        print('=====LAUNCH_DEV=====')
+        args = ParseArgument('build ./UnityProject android ./android'.split())
+        args.func(args)
     
-    args = ParseArgument('build ./UnityProject ios ./ios'.split())
-    args.func(args)
+        #args = ParseArgument('build ./UnityProject ios ./ios'.split())
+        #args.func(args)
     
-    args = ParseArgument('build ./UnityProject win ./win'.split())
-    args.func(args)
+        #args = ParseArgument('build ./UnityProject win ./win'.split())
+        #args.func(args)
     
-    args = ParseArgument('build ./UnityProject osx ./osx'.split())
-    args.func(args)
+        #args = ParseArgument('build ./UnityProject osx ./osx'.split())
+        #args.func(args)
+    else:
+        args = ParseArgument()
+        args.func(args)
+    pass
