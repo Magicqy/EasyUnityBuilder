@@ -18,31 +18,65 @@ import os
 	平台SDK集成
 '''
 
-#script home path
-HOME = os.path.dirname(sys.argv[0])
+class BuildTarget:
+    Android = 'Android'
+    iPhone = 'iPhone'
+    StandaloneWindows = 'StandaloneWindows'
+    StandaloneWindows64 = 'StandaloneWindows64'
+    StandaloneOSXIntel = 'StandaloneOSXIntel'
+    StandaloneOSXIntel64 = 'StandaloneOSXIntel64'
+    
+    btSwitch = {
+        'android' : Android,
+        'ios' : iPhone,
+        'win' : StandaloneWindows,
+        'win64' : StandaloneWindows64,
+        'osx' : StandaloneOSXIntel,
+        'osx64' : StandaloneOSXIntel64,
+        }
 
-#unity home path
-UNITY_HOME = os.environ.get('UNITY_HOME')
-if UNITY_HOME == None:
-    print('Unity home path not found, please define it with an environment variable UNITY_HOME')
-    sys.exit(1)
+    @staticmethod
+    def From(targetStr):
+        return BuildTarget.btSwitch[targetStr]
+    pass
 
-if sys.platform.startswith('win32'):
-    UNITY_EXE = os.path.join(UNITY_HOME, 'Unity.exe')
-elif sys.platform.startswith('darwin'):
-    UNITY_EXE = os.path.join(UNITY_HOME, 'Unity.app/Contents/MacOS/Unity')
-else:
-    print('Unsupported platform: %s' %platform)
-    sys.exit(1)
+class BuildOptions:
+    AcceptExternalModificationsToPlayer = 'AcceptExternalModificationsToPlayer'
+    Development = 'Development'
 
-if os.path.exists(UNITY_EXE) == False:
-    print('Unity installation not found at: %s' %UNITY_EXE)
-    sys.exit(1)
+    @staticmethod
+    def From(opt, exp, dev):
+        bo = str(opt)
+        if exp:
+            bo = '%s|%s' %(bo, BuildOptions.AcceptExternalModificationsToPlayer)
+        if dev:
+            bo = '%s|%s' %(bo, BuildOptions.Development)
+        return bo
+    pass
+
+class Workspace:
+    @staticmethod
+    def FullPath(path):
+        return os.path.abspath(os.path.expanduser(path)) if path else None
+
+    extSwitch = {
+        BuildTarget.Android : lambda e, o: '.apk' if o and len(e) == 0 else e,
+        BuildTarget.iPhone : lambda e, o: '.ipa' if o and len(e) == 0 else e,
+        BuildTarget.StandaloneWindows : lambda e, o: '/bin.exe' if len(e) == 0 else e,
+        BuildTarget.StandaloneWindows64 : lambda e, o: '/bin.exe' if len(e) == 0 else e,
+        BuildTarget.StandaloneOSXIntel : lambda e, o: '.app' if len(e) == 0 else e,
+        BuildTarget.StandaloneOSXIntel64 : lambda e, o: '.app' if len(e) == 0 else e,
+        }
+    @staticmethod
+    def CorrectExt(outPath, buildTarget, buildOpts):
+        root, ext = os.path.splitext(outPath)
+        return root + Workspace.extSwitch[buildTarget](ext, buildOpts.find(BuildOptions.AcceptExternalModificationsToPlayer) < 0)
+    pass
 
 #util methods
-def Setup(projPath):
-    Copy(os.path.join(HOME, 'BuildUtility/BuildUtility.cs'), os.path.join(projPath, 'Assets/Editor/_BuildUtility_/BuildUtility.cs'))
-    Copy(os.path.join(HOME, 'BuildUtility/Invoker/Invoker.cs'), os.path.join(projPath, 'Assets/Editor/_BuildUtility_/Invoker.cs'))
+def Setup(projPath, homePath):
+    Copy(os.path.join(homePath, 'BuildUtility/BuildUtility.cs'), os.path.join(projPath, 'Assets/Editor/_BuildUtility_/BuildUtility.cs'))
+    Copy(os.path.join(homePath, 'BuildUtility/Invoker/Invoker.cs'), os.path.join(projPath, 'Assets/Editor/_BuildUtility_/Invoker.cs'))
     pass
 
 def Cleanup(projPath):
@@ -86,60 +120,6 @@ def Del(path, alsoDelMetaFile = False):
             os.remove(path)
     pass
 
-class BuildTarget:
-    Android = 'Android'
-    iPhone = 'iPhone'
-    StandaloneWindows = 'StandaloneWindows'
-    StandaloneWindows64 = 'StandaloneWindows64'
-    StandaloneOSXIntel = 'StandaloneOSXIntel'
-    StandaloneOSXIntel64 = 'StandaloneOSXIntel64'
-    
-    btSwitch = {
-        'android' : Android,
-        'ios' : iPhone,
-        'win' : StandaloneWindows,
-        'win64' : StandaloneWindows64,
-        'osx' : StandaloneOSXIntel,
-        'osx64' : StandaloneOSXIntel64,
-        }
-
-    @staticmethod
-    def From(targetStr):
-        return BuildTarget.btSwitch[targetStr]
-    pass
-
-class PathUtil:
-    @staticmethod
-    def FullPath(path):
-        return os.path.abspath(os.path.expanduser(path))
-
-    extSwitch = {
-        BuildTarget.Android : lambda e, o: '.apk' if o and len(e) == 0 else e,
-        BuildTarget.iPhone : lambda e, o: '.ipa' if o and len(e) == 0 else e,
-        BuildTarget.StandaloneWindows : lambda e, o: '/bin.exe' if len(e) == 0 else e,
-        BuildTarget.StandaloneWindows64 : lambda e, o: '/bin.exe' if len(e) == 0 else e,
-        BuildTarget.StandaloneOSXIntel : lambda e, o: '.app' if len(e) == 0 else e,
-        BuildTarget.StandaloneOSXIntel64 : lambda e, o: '.app' if len(e) == 0 else e,
-    }
-    @staticmethod
-    def CorrectExt(outPath, buildTarget, buildOpts):
-        root, ext = os.path.splitext(outPath)
-        return root + PathUtil.extSwitch[buildTarget](ext, buildOpts.find(BuildOptions.AcceptExternalModificationsToPlayer) < 0)
-
-class BuildOptions:
-    AcceptExternalModificationsToPlayer = 'AcceptExternalModificationsToPlayer'
-    Development = 'Development'
-
-    @staticmethod
-    def From(opt, exp, dev):
-        bo = str(opt)
-        if exp:
-            bo = '%s|%s' %(bo, BuildOptions.AcceptExternalModificationsToPlayer)
-        if dev:
-            bo = '%s|%s' %(bo, BuildOptions.Development)
-        return bo
-    pass
-
 class Invoker:
     def __init__(self, methodName, *args):
         self.argList = ['-executeMethod', 'Invoker.Invoke', methodName]
@@ -151,20 +131,15 @@ class Invoker:
         self.argList.extend(args)
         return self
 
-    def Invoke(self, projPath, unityPath = None, logFilePath = None, batch = True, quit = True):
-        if unityPath == None:
-            unityPath = UNITY_EXE
-        if logFilePath == None:
-            logFilePath = os.path.join(HOME, 'logFile.txt')
-        
-        argList = [unityPath, '-logFile', logFilePath, '-projectPath', projPath]
+    def Invoke(self, projPath, homePath, unityExe, logFilePath, batch = True, quit = True):
+        argList = [unityExe, '-logFile', logFilePath, '-projectPath', projPath]
         if batch:
             argList.append('-batchmode')
         if quit:
             argList.append('-quit')
         argList.extend(self.argList)
 
-        print('UnityPath:       %s' %unityPath)
+        print('unityPath:       %s' %unityExe)
         print('projectPath:     %s' %projPath)
         print('logFilePath:     %s' %logFilePath)
         print('batchmode:       %s' %batch)
@@ -178,19 +153,46 @@ class Invoker:
                 print(arg),
         print('')
         
-        try:
-            Setup(projPath)
-            print('')
-            print(argList)
-            return subprocess.call(argList)
-        finally:
-            Cleanup(projPath)
+        if os.path.isdir(projPath):
+            try:
+                Setup(projPath, homePath)
+                print('')
+                print(argList)
+                return subprocess.call(argList)
+            finally:
+                Cleanup(projPath)
+        else:
+            print('projectPath not exist: %s' %projPath)
+    pass
+
+def BuildCmd(args):
+    projPath = Workspace.FullPath(args.projPath)
+    buildTarget = BuildTarget.From(args.buildTarget)
+    buildOpts = BuildOptions.From(args.opt, args.exp, args.dev)
+    outPath = Workspace.CorrectExt(Workspace.FullPath(args.outPath), buildTarget, buildOpts)
+
+    #cleanup
+    Del(outPath)
+    if buildTarget == BuildTarget.StandaloneWindows or buildTarget == BuildTarget.StandaloneWindows64:
+        Del(os.path.splitext(outPath)[0] + '_Data')
+
+    dir = os.path.dirname(outPath)
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+
+    ivk = Invoker('BuildUtility.BuildPlayer', outPath, buildTarget, buildOpts)
+    ivk.Invoke(projPath, args.homePath, args.unityExe, args.logFile, not args.nobatch, not args.noquit)
+    pass
+
+def InvokeCmd(args):
+    ivk = Invoker(args.methodName, args.args)
+    ivk.Invoke(projPath, args.homePath, args.unityExe, args.logFile, not args.nobatch, not args.noquit)
     pass
 
 def ParseArgument(explicitArgs = None):
     #parse arguments
     parser = argparse.ArgumentParser(description = 'Build util for Unity')
-    parser.add_argument('-unity', help = 'unity file path')
+    parser.add_argument('-unity', help = 'unity home path')
     parser.add_argument('-logFile', help = 'log file path')
     parser.add_argument('-nobatch', action = 'store_true', help = 'run unity without -batchmode')
     parser.add_argument('-noquit', action = 'store_true', help = 'run unity without -quit')
@@ -211,7 +213,38 @@ def ParseArgument(explicitArgs = None):
     invoke.add_argument('args', nargs = '*', help = 'method arguments')
     invoke.set_defaults(func = InvokeCmd)
 
-    return parser.parse_args(explicitArgs)
+    args = parser.parse_args(explicitArgs)
+    #workspace home
+    args.homePath = os.path.dirname(sys.argv[0])
+    #unity home
+    if args.unity == None:
+        args.unity = os.environ.get('UNITY_HOME')
+    args.unity = Workspace.FullPath(args.unity)
+
+    if sys.platform.startswith('win32'):
+        args.unityExe = os.path.join(args.unity, 'Unity.exe')
+    elif sys.platform.startswith('darwin'):
+        args.unityExe = os.path.join(args.unity, 'Unity.app/Contents/MacOS/Unity')
+    else:
+        print('Unsupported platform: %s' %sys.platform)
+        sys.exit(1)
+
+    if not os.path.exists(args.unity):
+        print('Unity home path not found, use -unity argument or define it with an environment variable UNITY_HOME')
+        sys.exit(1)
+    if not os.path.exists(args.unityExe):
+        print('Unity installation not found at: %s' %args.unityExe)
+        sys.exit(1)
+    
+    #log file
+    if args.logFile == None:
+        args.logFile = os.path.join(args.homePath, 'logFile.txt')
+    args.logFile = Workspace.FullPath(args.logFile)
+    dir = os.path.dirname(args.logFile)
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+
+    args.func(args)
     '''
     parser.add_argument('-bakdsym', action = 'store_true', help = 'backup dsym file after build')
     parser.add_argument('--svn', default = 'skip', choices = ['skip', 'up', 'reup'],
@@ -230,46 +263,15 @@ def ParseArgument(explicitArgs = None):
     parser.add_argument('-dev', action = 'store_true', help = 'development build')
     parser.add_argument('-method', help = 'execute method name')
     '''
-
-def BuildCmd(args):
-    projPath = PathUtil.FullPath(args.projPath)
-    buildTarget = BuildTarget.From(args.buildTarget)
-    buildOpts = BuildOptions.From(args.opt, args.exp, args.dev)
-    outPath = PathUtil.CorrectExt(PathUtil.FullPath(args.outPath), buildTarget, buildOpts)
-
-    #cleanup
-    Del(outPath)
-    if buildTarget == BuildTarget.StandaloneWindows or buildTarget == BuildTarget.StandaloneWindows64:
-        Del(os.path.splitext(outPath)[0] + '_Data')
-
-    dir = os.path.dirname(outPath)
-    if not os.path.exists(dir):
-        os.makedirs(dir)
-
-    ivk = Invoker('BuildUtility.BuildPlayer', outPath, buildTarget, buildOpts)
-    ivk.Invoke(projPath, args.unity, args.logFile, not args.nobatch, not args.noquit)
-    pass
-
-def InvokeCmd(args):
-    ivk = Invoker(args.methodName, args.args)
-    ivk.Invoke(projPath, args.unity, args.logFile, not args.nobatch, not args.noquit)
     pass
 
 if __name__ == '__main__':
     if os.environ.get('LAUNCH_DEV'):
         print('=====LAUNCH_DEV=====')
-        args = ParseArgument('build ./UnityProject android ./android'.split())
-        args.func(args)
-    
-        #args = ParseArgument('build ./UnityProject ios ./ios'.split())
-        #args.func(args)
-    
-        #args = ParseArgument('build ./UnityProject win ./win'.split())
-        #args.func(args)
-    
-        #args = ParseArgument('build ./UnityProject osx ./osx'.split())
-        #args.func(args)
+        ParseArgument('build ./UnityProject android ./android'.split())
+        #ParseArgument('build ./UnityProject ios ./ios'.split())
+        #ParseArgument('build ./UnityProject win ./win'.split())    
+        #ParseArgument('build ./UnityProject osx ./osx'.split())
     else:
-        args = ParseArgument()
-        args.func(args)
+        ParseArgument()
     pass
