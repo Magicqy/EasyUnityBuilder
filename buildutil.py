@@ -170,7 +170,10 @@ class Invoker:
                 Setup(projPath, homePath)
                 print('')
                 print(argList)
-                return subprocess.call(argList)
+                ret = subprocess.call(argList)
+                if ret != 0:
+                    print('execute fail with retcode: %s' %s)
+                return ret
             finally:
                 Cleanup(projPath)
         else:
