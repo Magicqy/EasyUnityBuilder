@@ -80,19 +80,21 @@ def Setup(projPath, homePath):
     pass
 
 def Cleanup(projPath):
-    Del(os.path.join(projPath, 'Assets/Editor/_BuildUtility_'), True)
+    Del(os.path.join(projPath, 'Assets/Editor/_BuildUtility_'), '.meta')
     pass
 
 def Copy(src, dst):
     if src == dst or src == None or os.path.exists(src) == False:
+        print('copy failed, %s >> %s' %(src, dst))
         return
 
-    src = os.path.abspath(os.path.expanduser(src))
-    dst = os.path.abspath(os.path.expanduser(dst))
-
     if os.path.isdir(src):
-        if os.path.exists(dst) == False:
+        #src and dst are dir
+        if os.path.isfile(dst):
+            os.remove(dst)
+        if not os.path.exists(dst):
             os.makedirs(dst)
+        
         for item in os.listdir(src):
             srcPath = os.path.join(src, item)
             dstPath = os.path.join(dst, item)
@@ -103,21 +105,23 @@ def Copy(src, dst):
             else:
                 pass
     elif os.path.isfile(src):
+        #src and dst are file
         dstDir = os.path.dirname(dst)
         if os.path.exists(dstDir) == False:
             os.makedirs(dstDir)
         shutil.copyfile(src, dst)
     pass
 
-def Del(path, alsoDelMetaFile = False):
+def Del(path, alsoDelFileWithExts = None):
     if os.path.isfile(path):
         os.remove(path)
     elif os.path.isdir(path):
         shutil.rmtree(path)
-    if alsoDelMetaFile:
-        path += '.meta'
-        if os.path.isfile(path):
-            os.remove(path)
+    if alsoDelFileWithExts:
+        for ext in alsoDelFileWithExts:
+            newFile = path + ext
+            if os.path.isfile(newFile):
+                os.remove(newFile)
     pass
 
 class Invoker:
@@ -202,6 +206,27 @@ def InvokeCmd(args):
     ivk.Invoke(projPath, args.homePath, args.unityExe, args.logFile, not args.nobatch, not args.noquit)
     pass
 
+def CopyCmd(args):
+    args.src = Workspace.FullPath(args.src)
+    args.dst = Workspace.FullPath(args.dst)
+    print('copy:')
+    print('src: %s' %args.src)
+    print('dst: %s' %args.dst)
+
+    Copy(args.src, args.dst)
+    pass
+
+def DelCmd(args):
+    args.src = Workspace.FullPath(args.src)
+    print('delete:')
+    print(args.src)
+    if args.ext:
+        for ext in args.ext:
+            print('%s%s' %(args.src, ext))
+
+    Del(args.src, args.ext)
+    pass
+
 #parse arguments
 def ParseArgs(explicitArgs = None):
     parser = argparse.ArgumentParser(description = 'build util for Unity')
@@ -226,7 +251,17 @@ def ParseArgs(explicitArgs = None):
     invoke.add_argument('args', nargs = '*', help = 'method arguments, support types: primitive / string / enum')
     invoke.add_argument('-next', action = 'append', nargs = '+', help = 'next method and arguments to invoke')
     invoke.set_defaults(func = InvokeCmd)
-    
+
+    copy = subparsers.add_parser('copy', help = 'copy file and directory')
+    copy.add_argument('src', help = 'path to copy from')
+    copy.add_argument('dst', help = 'path to copy to')
+    copy.set_defaults(func = CopyCmd)
+
+    delete = subparsers.add_parser('del', help = 'delete file and directory')
+    delete.add_argument('src', help = 'path to delete')
+    delete.add_argument('-ext', action = 'append', help = 'src path + ext will also be delete, useful for unity .meta files')
+    delete.set_defaults(func = DelCmd)
+
     return parser.parse_args(explicitArgs)
     '''
     parser.add_argument('-bakdsym', action = 'store_true', help = 'backup dsym file after build')
@@ -284,9 +319,11 @@ def Run(args):
 if __name__ == '__main__':
     if os.environ.get('DEV_LAUNCH'):
         print('=====DEV_LAUNCH=====')
-        Run(ParseArgs('''invoke ./UnityProject PlayerSettings.bundleIdentifier com.buildutil.test
-        -next BuildUtility.AddSymbolForGroup Android ANDROID
-        -next BuildUtility.AddSymbolForGroup iPhone IOS'''.split()))
+        Run(ParseArgs('copy ./1.txt ./2.txt'.split()))
+        #Run(ParseArgs('del ./1.txt -ext .aa -ext .bb'.split()))
+        #Run(ParseArgs('''invoke ./UnityProject PlayerSettings.bundleIdentifier com.buildutil.test
+        #-next BuildUtility.AddSymbolForGroup Android ANDROID
+        #-next BuildUtility.AddSymbolForGroup iPhone IOS'''.split()))
         #Run(ParseArgs('build ./UnityProject android ./android'.split()))
         #Run(ParseArgs('build ./UnityProject ios ./ios'.split()))
         #Run(ParseArgs('build ./UnityProject win ./win'.split()))   
