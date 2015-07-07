@@ -131,6 +131,12 @@ class Invoker:
         self.argList.extend(args)
         return self
 
+    def Append(self, methodName, argList):
+        self.argList.append('-next')
+        self.argList.append(methodName)
+        self.argList.extend(argList)
+        return self
+
     def Invoke(self, projPath, homePath, unityExe, logFilePath, batch = True, quit = True):
         argList = [unityExe, '-logFile', logFilePath, '-projectPath', projPath]
         if batch:
@@ -147,6 +153,8 @@ class Invoker:
         print('')
         for i in range(2, len(self.argList)):
             arg = self.argList[i]
+            if isinstance(arg, list):
+                arg = '%s' %' '.join(arg)
             if arg.startswith('-'):
                 print('')
             else:
@@ -185,7 +193,12 @@ def BuildCmd(args):
     pass
 
 def InvokeCmd(args):
+    projPath = Workspace.FullPath(args.projPath)
+    
     ivk = Invoker(args.methodName, args.args)
+    if args.next:
+        for nlist in args.next:
+            ivk.Append(nlist[0], nlist[1:])
     ivk.Invoke(projPath, args.homePath, args.unityExe, args.logFile, not args.nobatch, not args.noquit)
     pass
 
@@ -211,6 +224,7 @@ def ParseArgs(explicitArgs = None):
     invoke.add_argument('projPath', help = 'target unity project path')
     invoke.add_argument('methodName', help = 'method name to invoke, [Assembly:(Optional)]Namespace.SubNamespace.Class+NestedClass.Method')
     invoke.add_argument('args', nargs = '*', help = 'method arguments, support types: primitive / string / enum')
+    invoke.add_argument('-next', action = 'append', nargs = '+', help = 'next method and arguments to invoke')
     invoke.set_defaults(func = InvokeCmd)
     
     return parser.parse_args(explicitArgs)
@@ -270,7 +284,10 @@ def Run(args):
 if __name__ == '__main__':
     if os.environ.get('DEV_LAUNCH'):
         print('=====DEV_LAUNCH=====')
-        Run(ParseArgs('build ./UnityProject android ./android'.split()))
+        Run(ParseArgs('''invoke ./UnityProject PlayerSettings.bundleIdentifier com.buildutil.test
+        -next BuildUtility.AddSymbolForGroup Android ANDROID
+        -next BuildUtility.AddSymbolForGroup iPhone IOS'''.split()))
+        #Run(ParseArgs('build ./UnityProject android ./android'.split()))
         #Run(ParseArgs('build ./UnityProject ios ./ios'.split()))
         #Run(ParseArgs('build ./UnityProject win ./win'.split()))   
         #Run(ParseArgs('build ./UnityProject osx ./osx'.split()))
