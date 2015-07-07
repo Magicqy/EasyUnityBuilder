@@ -189,9 +189,9 @@ def InvokeCmd(args):
     ivk.Invoke(projPath, args.homePath, args.unityExe, args.logFile, not args.nobatch, not args.noquit)
     pass
 
-def ParseArgument(explicitArgs = None):
-    #parse arguments
-    parser = argparse.ArgumentParser(description = 'Build util for Unity')
+#parse arguments
+def ParseArgs(explicitArgs = None):
+    parser = argparse.ArgumentParser(description = 'build util for Unity')
     parser.add_argument('-unity', help = 'unity home path')
     parser.add_argument('-logFile', help = 'log file path')
     parser.add_argument('-nobatch', action = 'store_true', help = 'run unity without -batchmode')
@@ -201,19 +201,40 @@ def ParseArgument(explicitArgs = None):
     build = subparsers.add_parser('build', help='build player for unity project')
     build.add_argument('projPath', help = 'target unity project path')
     build.add_argument('buildTarget', choices = ['android', 'ios', 'win', 'win64', 'osx', 'osx64'], help = 'build target')
-    build.add_argument('outPath', help = 'output file path')
+    build.add_argument('outPath', help = 'output file path, with')
     build.add_argument('-opt', help = 'build options, see UnityEditor.BuildOptions for detail')
     build.add_argument('-exp', action = 'store_true', help = 'export project but not build it (android and ios only)')
-    build.add_argument('-dev', action = 'store_true', help = 'development version')
+    build.add_argument('-dev', action = 'store_true', help = 'development version, with debug symbols and enable profiler')
     build.set_defaults(func = BuildCmd)
 
     invoke = subparsers.add_parser('invoke', help = 'invoke method with arguments')
     invoke.add_argument('projPath', help = 'target unity project path')
-    invoke.add_argument('methodName', help = 'method name to invoke')
-    invoke.add_argument('args', nargs = '*', help = 'method arguments')
+    invoke.add_argument('methodName', help = 'method name to invoke, [Assembly:(Optional)]Namespace.SubNamespace.Class+NestedClass.Method')
+    invoke.add_argument('args', nargs = '*', help = 'method arguments, support types: primitive / string / enum')
     invoke.set_defaults(func = InvokeCmd)
+    
+    return parser.parse_args(explicitArgs)
+    '''
+    parser.add_argument('-bakdsym', action = 'store_true', help = 'backup dsym file after build')
+    parser.add_argument('--svn', default = 'skip', choices = ['skip', 'up', 'reup'],
+	    help = 'svn checkout strategy, skip: do nothing; up:svn up, reup:svn revert then svn up')
+    parser.add_argument('--keypwd', help = 'code sign keychain password, used to resolve problem: User Interaction Is Not Allowed')
+    parser.add_argument('--keypath', help = 'code sign keychain path, used to resolve problem: User Interaction Is Not Allowed')
+    parser.add_argument('-o', '--outpath', help = 'output path, without file extension')
+    parser.add_argument('-t', '--buildtarget', default = 'android',
+	    choices = ['ios', 'android', 'win', 'osx'], help= 'unity3d build target platform')
+    parser.add_argument('-i', '--identifier', help = 'app identifier')
+    parser.add_argument('-c', '--codesign', default = 'ep_dist',
+	    choices = ['dev', 'dist', 'ep_dist'], help = 'code sign indentity and provision profile configuration')
+    parser.add_argument('-v', '--vercode', type = int, help = 'app version code')
+    parser.add_argument('-n', '--vername', help = 'app version name')
+    parser.add_argument('-s', '--symbols', help = 'build with extra script symbols')
+    parser.add_argument('-dev', action = 'store_true', help = 'development build')
+    parser.add_argument('-method', help = 'execute method name')
+    '''
+    pass
 
-    args = parser.parse_args(explicitArgs)
+def Run(args):
     #workspace home
     args.homePath = os.path.dirname(sys.argv[0])
     #unity home
@@ -243,35 +264,16 @@ def ParseArgument(explicitArgs = None):
     dir = os.path.dirname(args.logFile)
     if not os.path.exists(dir):
         os.makedirs(dir)
-
     args.func(args)
-    '''
-    parser.add_argument('-bakdsym', action = 'store_true', help = 'backup dsym file after build')
-    parser.add_argument('--svn', default = 'skip', choices = ['skip', 'up', 'reup'],
-	    help = 'svn checkout strategy, skip: do nothing; up:svn up, reup:svn revert then svn up')
-    parser.add_argument('--keypwd', help = 'code sign keychain password, used to resolve problem: User Interaction Is Not Allowed')
-    parser.add_argument('--keypath', help = 'code sign keychain path, used to resolve problem: User Interaction Is Not Allowed')
-    parser.add_argument('-o', '--outpath', help = 'output path, without file extension')
-    parser.add_argument('-t', '--buildtarget', default = 'android',
-	    choices = ['ios', 'android', 'win', 'osx'], help= 'unity3d build target platform')
-    parser.add_argument('-i', '--identifier', help = 'app identifier')
-    parser.add_argument('-c', '--codesign', default = 'ep_dist',
-	    choices = ['dev', 'dist', 'ep_dist'], help = 'code sign indentity and provision profile configuration')
-    parser.add_argument('-v', '--vercode', type = int, help = 'app version code')
-    parser.add_argument('-n', '--vername', help = 'app version name')
-    parser.add_argument('-s', '--symbols', help = 'build with extra script symbols')
-    parser.add_argument('-dev', action = 'store_true', help = 'development build')
-    parser.add_argument('-method', help = 'execute method name')
-    '''
     pass
 
 if __name__ == '__main__':
-    if os.environ.get('LAUNCH_DEV'):
-        print('=====LAUNCH_DEV=====')
-        ParseArgument('build ./UnityProject android ./android'.split())
-        #ParseArgument('build ./UnityProject ios ./ios'.split())
-        #ParseArgument('build ./UnityProject win ./win'.split())    
-        #ParseArgument('build ./UnityProject osx ./osx'.split())
+    if os.environ.get('DEV_LAUNCH'):
+        print('=====DEV_LAUNCH=====')
+        Run(ParseArgs('build ./UnityProject android ./android'.split()))
+        #Run(ParseArgs('build ./UnityProject ios ./ios'.split()))
+        #Run(ParseArgs('build ./UnityProject win ./win'.split()))   
+        #Run(ParseArgs('build ./UnityProject osx ./osx'.split()))
     else:
-        ParseArgument()
+        Run(ParseArgs())
     pass
