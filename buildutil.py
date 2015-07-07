@@ -80,7 +80,7 @@ def Setup(projPath, homePath):
     pass
 
 def Cleanup(projPath):
-    Del(os.path.join(projPath, 'Assets/Editor/_BuildUtility_'), '.meta')
+    Del(os.path.join(projPath, 'Assets/Editor/_BuildUtility_'), ['.meta'])
     pass
 
 def Copy(src, dst):
@@ -322,12 +322,12 @@ def Run(args):
 if __name__ == '__main__':
     if os.environ.get('DEV_LAUNCH'):
         print('=====DEV_LAUNCH=====')
-        Run(ParseArgs('copy ./1.txt ./2.txt'.split()))
+        #Run(ParseArgs('copy ./1.txt ./2.txt'.split()))
         #Run(ParseArgs('del ./1.txt -ext .aa -ext .bb'.split()))
         #Run(ParseArgs('''invoke ./UnityProject PlayerSettings.bundleIdentifier com.buildutil.test
         #-next BuildUtility.AddSymbolForGroup Android ANDROID
         #-next BuildUtility.AddSymbolForGroup iPhone IOS'''.split()))
-        #Run(ParseArgs('build ./UnityProject android ./android'.split()))
+        Run(ParseArgs('build ./UnityProject android ./android'.split()))
         #Run(ParseArgs('build ./UnityProject ios ./ios'.split()))
         #Run(ParseArgs('build ./UnityProject win ./win'.split()))   
         #Run(ParseArgs('build ./UnityProject osx ./osx'.split()))
