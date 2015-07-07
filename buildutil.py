@@ -57,7 +57,7 @@ class BuildOptions:
 class Workspace:
     @staticmethod
     def FullPath(path):
-        return os.path.abspath(os.path.expanduser(path)) if path else None
+        return os.path.abspath(os.path.expanduser(path)) if path else ''
 
     extSwitch = {
         BuildTarget.Android : lambda e, o: '.apk' if o and len(e) == 0 else e,
