@@ -6,18 +6,6 @@ import shutil
 import sys
 import os
 
-
-'''
-功能列表
-	导出android/ios/win/osx的可执行文件
-	导出XCode或者Eclipse工程
-	在导出的XCode或者Eclipse工程的基础上生成ipa或者apk
-	调用工程中的静态方法
-	拷贝目录文件，用于设置plugins目录里的内容等
-	SVN操作
-	平台SDK集成
-'''
-
 class BuildTarget:
     Android = 'Android'
     iPhone = 'iPhone'
@@ -172,7 +160,7 @@ class Invoker:
                 print(argList)
                 ret = subprocess.call(argList)
                 if ret != 0:
-                    print('execute fail with retcode: %s' %s)
+                    print('execute fail with retcode: %s' %ret)
                 return ret
             finally:
                 Cleanup(projPath)
@@ -196,7 +184,16 @@ def BuildCmd(args):
         os.makedirs(dir)
 
     ivk = Invoker('BuildUtility.BuildPlayer', outPath, buildTarget, buildOpts)
-    ivk.Invoke(projPath, args.homePath, args.unityExe, args.logFile, not args.nobatch, not args.noquit)
+    ret = ivk.Invoke(projPath, args.homePath, args.unityExe, args.logFile, not args.nobatch, not args.noquit)
+    
+    #place exported project in outPath/ instead of outPath/productName/
+    if ret == 0 and buildTarget == BuildTarget.Android and not args.aph:
+        for dir in os.listdir(outPath):
+            dirPath = os.path.join(outPath, dir)
+            if os.path.isdir(dirPath):
+                Copy(dirPath, outPath)
+                Del(dirPath)
+                break
     pass
 
 def InvokeCmd(args):
@@ -209,6 +206,54 @@ def InvokeCmd(args):
     ivk.Invoke(projPath, args.homePath, args.unityExe, args.logFile, not args.nobatch, not args.noquit)
     pass
 
+def PackageCmd(args):
+    projPath = Workspace.FullPath(args.projPath)
+    buildTarget = BuildTarget.From(args.buildTarget)
+    buildType = 'debug' if args.debug else 'release'
+
+    if not os.path.isdir(projPath):
+        print('project directory not exist: %s' %projPath)
+        return
+
+    try:
+        lastDir = os.getcwd()
+        os.chdir(projPath)
+        try:
+            if buildTarget == BuildTarget.Android:
+                if args.pf:
+                    for flavor in args.pf:
+                        GradleBuild(projPath, 'assemble', flavor, buildType)
+                else:
+                    GradleBuild(projPath, 'assemble', '', buildType)
+            elif buildTarget == BuildTarget.iPhone:
+                pass
+            else:
+                print('invalid build target: %s' %buildTarget)
+        except:
+            print('package command fail with excpetion')
+    except:
+        print('change working directory failed: %s' %projPath)
+    finally:
+        os.chdir(lastDir)
+    pass
+
+def GradleBuild(projPath, task, flavor, buildType):
+    flavor = str(flavor).lower()
+    buildType = str(buildType).lower()
+    if len(buildType) > 1:
+        argList = ['gradlew.bat', '%s%s%s%s%s' %(task,
+                                                 flavor[0].upper() if len(flavor) > 1 else '',
+                                                 flavor[1:] if len(flavor) > 1 else '',
+                                                 buildType[0].upper(),
+                                                 buildType[1:])]
+        print(argList)
+        ret = subprocess.call(argList)
+        if ret != 0:
+            print('execute gradle task failed with retcode:%s' %ret)
+    else:
+        print('invalid parameter, task:%s, flavor:%s, buildType:%s' %(task, flavor, buildType))
+    pass
+        
 def CopyCmd(args):
     args.src = Workspace.FullPath(args.src)
     args.dst = Workspace.FullPath(args.dst)
@@ -241,11 +286,12 @@ def ParseArgs(explicitArgs = None):
     subparsers = parser.add_subparsers(help = 'sub-command list')
     build = subparsers.add_parser('build', help='build player for unity project')
     build.add_argument('projPath', help = 'target unity project path')
-    build.add_argument('buildTarget', choices = ['android', 'ios', 'win', 'win64', 'osx', 'osx64'], help = 'build target')
+    build.add_argument('buildTarget', choices = ['android', 'ios', 'win', 'win64', 'osx', 'osx64'], help = 'build target type')
     build.add_argument('outPath', help = 'output file path, with')
     build.add_argument('-opt', help = 'build options, see UnityEditor.BuildOptions for detail')
     build.add_argument('-exp', action = 'store_true', help = 'export project but not build it (android and ios only)')
     build.add_argument('-dev', action = 'store_true', help = 'development version, with debug symbols and enable profiler')
+    build.add_argument('-aph', default = False, action = 'store_false', help = 'keep android project hierarchy as outPath/[productName]/ instead of outPath/')
     build.set_defaults(func = BuildCmd)
 
     invoke = subparsers.add_parser('invoke', help = 'invoke method with arguments')
@@ -254,6 +300,13 @@ def ParseArgs(explicitArgs = None):
     invoke.add_argument('args', nargs = '*', help = 'method arguments, support types: primitive / string / enum')
     invoke.add_argument('-next', action = 'append', nargs = '+', help = 'next method and arguments to invoke')
     invoke.set_defaults(func = InvokeCmd)
+
+    package = subparsers.add_parser('package', help = 'package exported project, use gradle as Android build system')
+    package.add_argument('projPath', help = 'target project path')
+    package.add_argument('buildTarget', choices = ['android', 'ios'], help = 'build target type')
+    package.add_argument('-pf', nargs = '+', help = 'gradle productFlavors, defined in your build.gradle script')
+    package.add_argument('-debug', default = False, action = 'store_true', help = 'debug build type, default is release')
+    package.set_defaults(func = PackageCmd)
 
     copy = subparsers.add_parser('copy', help = 'copy file and directory')
     copy.add_argument('src', help = 'path to copy from')
@@ -266,24 +319,6 @@ def ParseArgs(explicitArgs = None):
     delete.set_defaults(func = DelCmd)
 
     return parser.parse_args(explicitArgs)
-    '''
-    parser.add_argument('-bakdsym', action = 'store_true', help = 'backup dsym file after build')
-    parser.add_argument('--svn', default = 'skip', choices = ['skip', 'up', 'reup'],
-	    help = 'svn checkout strategy, skip: do nothing; up:svn up, reup:svn revert then svn up')
-    parser.add_argument('--keypwd', help = 'code sign keychain password, used to resolve problem: User Interaction Is Not Allowed')
-    parser.add_argument('--keypath', help = 'code sign keychain path, used to resolve problem: User Interaction Is Not Allowed')
-    parser.add_argument('-o', '--outpath', help = 'output path, without file extension')
-    parser.add_argument('-t', '--buildtarget', default = 'android',
-	    choices = ['ios', 'android', 'win', 'osx'], help= 'unity3d build target platform')
-    parser.add_argument('-i', '--identifier', help = 'app identifier')
-    parser.add_argument('-c', '--codesign', default = 'ep_dist',
-	    choices = ['dev', 'dist', 'ep_dist'], help = 'code sign indentity and provision profile configuration')
-    parser.add_argument('-v', '--vercode', type = int, help = 'app version code')
-    parser.add_argument('-n', '--vername', help = 'app version name')
-    parser.add_argument('-s', '--symbols', help = 'build with extra script symbols')
-    parser.add_argument('-dev', action = 'store_true', help = 'development build')
-    parser.add_argument('-method', help = 'execute method name')
-    '''
     pass
 
 def Run(args):
@@ -317,6 +352,7 @@ def Run(args):
     if not os.path.exists(dir):
         os.makedirs(dir)
     args.func(args)
+    print('')
     pass
 
 if __name__ == '__main__':
@@ -327,7 +363,7 @@ if __name__ == '__main__':
         #Run(ParseArgs('''invoke ./UnityProject PlayerSettings.bundleIdentifier com.buildutil.test
         #-next BuildUtility.AddSymbolForGroup Android ANDROID
         #-next BuildUtility.AddSymbolForGroup iPhone IOS'''.split()))
-        Run(ParseArgs('build ./UnityProject android ./android'.split()))
+        #Run(ParseArgs('build ./UnityProject android ./android'.split()))
         #Run(ParseArgs('build ./UnityProject ios ./ios'.split()))
         #Run(ParseArgs('build ./UnityProject win ./win'.split()))   
         #Run(ParseArgs('build ./UnityProject osx ./osx'.split()))
