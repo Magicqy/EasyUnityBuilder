@@ -115,18 +115,21 @@ def Del(path, alsoDelFileWithExts = None):
 class Invoker:
     def __init__(self, methodName, *args):
         self.argList = ['-executeMethod', 'Invoker.Invoke', methodName]
-        self.argList.extend(args)
+        if len(args) > 0:
+            self.argList.extend(args)
 
     def Append(self, methodName, *args):
         self.argList.append('-next')
         self.argList.append(methodName)
-        self.argList.extend(args)
+        if len(args) > 0:
+            self.argList.extend(args)
         return self
 
     def Append(self, methodName, argList):
         self.argList.append('-next')
         self.argList.append(methodName)
-        self.argList.extend(argList)
+        if len(argList) > 0:
+            self.argList.extend(argList)
         return self
 
     def Invoke(self, projPath, homePath, unityExe, logFilePath, batch = True, quit = True):
