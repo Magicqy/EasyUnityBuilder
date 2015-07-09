@@ -113,23 +113,15 @@ def Del(path, alsoDelFileWithExts = None):
     pass
 
 class Invoker:
-    def __init__(self, methodName, *args):
+    def __init__(self, methodName, argList):
         self.argList = ['-executeMethod', 'Invoker.Invoke', methodName]
-        if len(args) > 0:
-            self.argList.extend(args)
-
-    def Append(self, methodName, *args):
-        self.argList.append('-next')
-        self.argList.append(methodName)
-        if len(args) > 0:
-            self.argList.extend(args)
-        return self
+        self.argList.extend(argList)
+        pass
 
     def Append(self, methodName, argList):
         self.argList.append('-next')
         self.argList.append(methodName)
-        if len(argList) > 0:
-            self.argList.extend(argList)
+        self.argList.extend(argList)
         return self
 
     def Invoke(self, projPath, homePath, unityExe, logFilePath, batch = True, quit = True):
@@ -186,7 +178,7 @@ def BuildCmd(args):
     if not os.path.exists(dir):
         os.makedirs(dir)
 
-    ivk = Invoker('BuildUtility.BuildPlayer', outPath, buildTarget, buildOpts)
+    ivk = Invoker('BuildUtility.BuildPlayer', [outPath, buildTarget, buildOpts])
     ret = ivk.Invoke(projPath, args.homePath, args.unityExe, args.logFile, not args.nobatch, not args.noquit)
     
     #place exported project in outPath/ instead of outPath/productName/
