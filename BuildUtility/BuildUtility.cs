@@ -27,6 +27,11 @@ public static class BuildUtility
 
     public static void BuildPlayer(string outPath, BuildTarget target, BuildOptions opt)
     {
+        if (target != EditorUserBuildSettings.activeBuildTarget)
+        {
+            EditorUserBuildSettings.SwitchActiveBuildTarget(target);
+        }
+
         List<string> levels = new List<string>();
         foreach (var s in EditorBuildSettings.scenes)
         {
