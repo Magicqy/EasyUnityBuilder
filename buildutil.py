@@ -187,7 +187,7 @@ def BuildCmd(args):
     ret = ivk.Invoke(projPath, args.homePath, args.unityExe, args.logFile, not args.nobatch, not args.noquit)
     
     #place exported project in outPath/ instead of outPath/productName/
-    if ret == 0 and buildTarget == BuildTarget.Android and not args.aph:
+    if ret == 0 and buildTarget == BuildTarget.Android and buildOpts.find(BuildOptions.AcceptExternalModificationsToPlayer) >= 0 and not args.aph:
         for dir in os.listdir(outPath):
             dirPath = os.path.join(outPath, dir)
             if os.path.isdir(dirPath):
