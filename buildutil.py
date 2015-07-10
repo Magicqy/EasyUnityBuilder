@@ -71,7 +71,7 @@ def Cleanup(projPath):
     Del(os.path.join(projPath, 'Assets/Editor/_BuildUtility_'), ['.meta'])
     pass
 
-def Copy(src, dst):
+def Copy(src, dst, stat = False):
     if src == dst or src == None or os.path.exists(src) == False:
         print('copy failed, %s >> %s' %(src, dst))
         return
@@ -88,8 +88,10 @@ def Copy(src, dst):
             dstPath = os.path.join(dst, item)
             if os.path.isfile(srcPath):
                 shutil.copyfile(srcPath, dstPath)
+                if stat:
+                    shutil.copystat(srcPath, dstPath)
             elif os.path.isdir(srcPath):
-                Copy(srcPath, dstPath)
+                Copy(srcPath, dstPath, stat)
             else:
                 pass
     elif os.path.isfile(src):
@@ -98,6 +100,8 @@ def Copy(src, dst):
         if os.path.exists(dstDir) == False:
             os.makedirs(dstDir)
         shutil.copyfile(src, dst)
+        if stat:
+            shutil.copystat(src, dst)
     pass
 
 def Del(path, alsoDelFileWithExts = None):
@@ -253,10 +257,11 @@ def CopyCmd(args):
     args.src = Workspace.FullPath(args.src)
     args.dst = Workspace.FullPath(args.dst)
     print('copy:')
-    print('src: %s' %args.src)
-    print('dst: %s' %args.dst)
+    print('src:     %s' %args.src)
+    print('dst:     %s' %args.dst)
+    print('stat:    %s' %args.stat)
 
-    Copy(args.src, args.dst)
+    Copy(args.src, args.dst, args.stat)
     pass
 
 def DelCmd(args):
@@ -306,6 +311,7 @@ def ParseArgs(explicitArgs = None):
     copy = subparsers.add_parser('copy', help = 'copy file and directory')
     copy.add_argument('src', help = 'path to copy from')
     copy.add_argument('dst', help = 'path to copy to')
+    copy.add_argument('-stat', default = False, action = 'store_true', help = 'copy the permission bits, last access time, last modification time, and flags')
     copy.set_defaults(func = CopyCmd)
 
     delete = subparsers.add_parser('del', help = 'delete file and directory')
