@@ -240,7 +240,7 @@ def GradleBuild(projPath, task, flavor, buildType, winOS):
     flavor = str(flavor).lower()
     buildType = str(buildType).lower()
     if len(buildType) > 1:
-        argList = ['gradlew.bat' if winOS else 'gradlew', '%s%s%s%s%s' %(task,
+        argList = ['.\gradlew.bat' if winOS else './gradlew', '%s%s%s%s%s' %(task,
                                                  flavor[0].upper() if len(flavor) > 1 else '',
                                                  flavor[1:] if len(flavor) > 1 else '',
                                                  buildType[0].upper(),
