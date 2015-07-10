@@ -217,9 +217,9 @@ def PackageCmd(args):
             if buildTarget == BuildTarget.Android:
                 if args.pf:
                     for flavor in args.pf:
-                        GradleBuild(projPath, 'assemble', flavor, buildType)
+                        GradleBuild(projPath, 'assemble', flavor, buildType, args.winOS)
                 else:
-                    GradleBuild(projPath, 'assemble', '', buildType)
+                    GradleBuild(projPath, 'assemble', '', buildType, args.winOS)
             elif buildTarget == BuildTarget.iPhone:
                 pass
             else:
@@ -232,11 +232,11 @@ def PackageCmd(args):
         os.chdir(lastDir)
     pass
 
-def GradleBuild(projPath, task, flavor, buildType):
+def GradleBuild(projPath, task, flavor, buildType, winOS):
     flavor = str(flavor).lower()
     buildType = str(buildType).lower()
     if len(buildType) > 1:
-        argList = ['gradlew.bat', '%s%s%s%s%s' %(task,
+        argList = ['gradlew.bat' if winOS else 'gradlew', '%s%s%s%s%s' %(task,
                                                  flavor[0].upper() if len(flavor) > 1 else '',
                                                  flavor[1:] if len(flavor) > 1 else '',
                                                  buildType[0].upper(),
@@ -248,7 +248,7 @@ def GradleBuild(projPath, task, flavor, buildType):
     else:
         print('invalid parameter, task:%s, flavor:%s, buildType:%s' %(task, flavor, buildType))
     pass
-        
+
 def CopyCmd(args):
     args.src = Workspace.FullPath(args.src)
     args.dst = Workspace.FullPath(args.dst)
@@ -325,8 +325,10 @@ def Run(args):
     args.unity = Workspace.FullPath(args.unity)
 
     if sys.platform.startswith('win32'):
+        args.winOS = True
         args.unityExe = os.path.join(args.unity, 'Unity.exe')
     elif sys.platform.startswith('darwin'):
+        args.winOS = False
         args.unityExe = os.path.join(args.unity, 'Unity.app/Contents/MacOS/Unity')
     else:
         print('Unsupported platform: %s' %sys.platform)
