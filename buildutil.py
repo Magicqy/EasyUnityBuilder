@@ -221,9 +221,9 @@ def PackageCmd(args):
             if buildTarget == BuildTarget.Android:
                 if args.pf:
                     for flavor in args.pf:
-                        GradleBuild(projPath, 'assemble', flavor, buildType, args.winOS)
+                        GradleBuild(projPath, args.task, flavor, buildType, args.winOS)
                 else:
-                    GradleBuild(projPath, 'assemble', '', buildType, args.winOS)
+                    GradleBuild(projPath, args.task, '', buildType, args.winOS)
             elif buildTarget == BuildTarget.iPhone:
                 pass
             else:
@@ -305,6 +305,7 @@ def ParseArgs(explicitArgs = None):
     package.add_argument('projPath', help = 'target project path')
     package.add_argument('buildTarget', choices = ['android', 'ios'], help = 'build target type')
     package.add_argument('-pf', nargs = '+', help = 'gradle productFlavors, defined in your build.gradle script')
+    package.add_argument('-task', choices = ['assemble', 'install', 'uninstall', 'lint', 'jar'], default = 'assemble', help = 'gradle task name prefix')
     package.add_argument('-debug', default = False, action = 'store_true', help = 'debug build type, default is release')
     package.set_defaults(func = PackageCmd)
 
