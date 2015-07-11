@@ -72,12 +72,12 @@ def Cleanup(projPath):
     pass
 
 def Copy(src, dst, stat = False):
-    if src == dst or src == None or os.path.exists(src) == False:
+    if src == dst or src == None or not os.path.exists(src):
         print('copy failed, %s >> %s' %(src, dst))
         return
 
     if os.path.isdir(src):
-        #src and dst are dir
+        #src and dst are dirs
         if os.path.isfile(dst):
             os.remove(dst)
         if not os.path.exists(dst):
@@ -93,15 +93,17 @@ def Copy(src, dst, stat = False):
             elif os.path.isdir(srcPath):
                 Copy(srcPath, dstPath, stat)
             else:
-                pass
+                print('path is not a file or directory: %s' %srcPath)
     elif os.path.isfile(src):
-        #src and dst are file
+        #src and dst are files
         dstDir = os.path.dirname(dst)
-        if os.path.exists(dstDir) == False:
+        if not os.path.exists(dstDir):
             os.makedirs(dstDir)
         shutil.copyfile(src, dst)
         if stat:
             shutil.copystat(src, dst)
+    else:
+        print('path is not a file or directory: %s' %src)
     pass
 
 def Del(path, alsoDelSuffixes = None):
@@ -255,14 +257,15 @@ def GradleBuild(projPath, task, flavor, buildType, winOS):
     pass
 
 def CopyCmd(args):
-    args.src = Workspace.FullPath(args.src)
-    args.dst = Workspace.FullPath(args.dst)
-    print('copy:')
-    print('src:     %s' %args.src)
-    print('dst:     %s' %args.dst)
+    src = Workspace.FullPath(args.src)
+    dst = Workspace.FullPath(args.dst)
+
+    print('===Copy===')
+    print('src:     %s' %src)
+    print('dst:     %s' %dst)
     print('stat:    %s' %args.stat)
 
-    Copy(args.src, args.dst, args.stat)
+    Copy(src, dst, args.stat)
     pass
 
 def DelCmd(args):
@@ -273,7 +276,7 @@ def DelCmd(args):
     if args.sfx:
         for suffix in args.sfx:
             print('path:    %s%s' %(path, suffix))
-
+    
     Del(path, args.sfx)
     pass
 
