@@ -104,16 +104,17 @@ def Copy(src, dst, stat = False):
             shutil.copystat(src, dst)
     pass
 
-def Del(path, alsoDelFileWithExts = None):
+def Del(path, alsoDelSuffixes = None):
     if os.path.isfile(path):
         os.remove(path)
     elif os.path.isdir(path):
         shutil.rmtree(path)
-    if alsoDelFileWithExts:
-        for ext in alsoDelFileWithExts:
-            newFile = path + ext
-            if os.path.isfile(newFile):
-                os.remove(newFile)
+    elif os.path.exists(path):
+        print('path is not a file or directory: %s' %path)
+
+    if alsoDelSuffixes:
+        for suffix in alsoDelSuffixes:
+            Del(path + suffix)
     pass
 
 class Invoker:
@@ -188,10 +189,10 @@ def BuildCmd(args):
     #place exported project in outPath/ instead of outPath/productName/
     if ret == 0 and buildTarget == BuildTarget.Android and buildOpts.find(BuildOptions.AcceptExternalModificationsToPlayer) >= 0 and not args.aph:
         for dir in os.listdir(outPath):
-            dirPath = os.path.join(outPath, dir)
-            if os.path.isdir(dirPath):
-                Copy(dirPath, outPath)
-                Del(dirPath)
+            expDir = os.path.join(outPath, dir)
+            if os.path.isdir(expDir):
+                Copy(expDir, outPath)
+                Del(expDir)
                 break
     pass
 
@@ -265,21 +266,22 @@ def CopyCmd(args):
     pass
 
 def DelCmd(args):
-    args.src = Workspace.FullPath(args.src)
-    print('delete:')
-    print(args.src)
-    if args.ext:
-        for ext in args.ext:
-            print('%s%s' %(args.src, ext))
+    path = Workspace.FullPath(args.src)
 
-    Del(args.src, args.ext)
+    print('===Delete===')
+    print('path:    %s' %path)
+    if args.sfx:
+        for suffix in args.sfx:
+            print('path:    %s%s' %(path, suffix))
+
+    Del(path, args.sfx)
     pass
 
 #parse arguments
 def ParseArgs(explicitArgs = None):
     parser = argparse.ArgumentParser(description = 'build util for Unity')
     parser.add_argument('-unity', help = 'unity home path')
-    parser.add_argument('-logFile', help = 'log file path')
+    parser.add_argument('-logFile', help = 'unity log file path')
     parser.add_argument('-nobatch', action = 'store_true', help = 'run unity without -batchmode')
     parser.add_argument('-noquit', action = 'store_true', help = 'run unity without -quit')
 
@@ -309,15 +311,15 @@ def ParseArgs(explicitArgs = None):
     package.add_argument('-debug', default = False, action = 'store_true', help = 'debug build type, default is release')
     package.set_defaults(func = PackageCmd)
 
-    copy = subparsers.add_parser('copy', help = 'copy file and directory')
+    copy = subparsers.add_parser('copy', help = 'copy file or directory')
     copy.add_argument('src', help = 'path to copy from')
     copy.add_argument('dst', help = 'path to copy to')
     copy.add_argument('-stat', default = False, action = 'store_true', help = 'copy the permission bits, last access time, last modification time, and flags')
     copy.set_defaults(func = CopyCmd)
 
-    delete = subparsers.add_parser('del', help = 'delete file and directory')
+    delete = subparsers.add_parser('del', help = 'delete file or directory')
     delete.add_argument('src', help = 'path to delete')
-    delete.add_argument('-ext', action = 'append', help = 'src path + ext will also be delete, useful for unity .meta files')
+    delete.add_argument('-sfx', action = 'append', help = 'also delete path (src + suffix), useful for unity .meta files')
     delete.set_defaults(func = DelCmd)
 
     return parser.parse_args(explicitArgs)
