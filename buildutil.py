@@ -40,6 +40,10 @@ class BuildOptions:
         if dev:
             bo = '%s|%s' %(bo, BuildOptions.Development)
         return bo
+
+    @staticmethod
+    def AcceptExternalModifications(buildOpts):
+        return buildOpts.find(BuildOptions.AcceptExternalModificationsToPlayer) >= 0
     pass
 
 class Workspace:
@@ -139,6 +143,7 @@ class Invoker:
             argList.append('-quit')
         argList.extend(self.argList)
 
+        print('===Invoke===')
         print('unityPath:       %s' %unityExe)
         print('projectPath:     %s' %projPath)
         print('logFilePath:     %s' %logFilePath)
@@ -163,6 +168,7 @@ class Invoker:
                 ret = subprocess.call(argList)
                 if ret != 0:
                     print('execute fail with retcode: %s' %ret)
+                    sys.exit(ret)
                 return ret
             finally:
                 Cleanup(projPath)
@@ -189,7 +195,7 @@ def BuildCmd(args):
     ret = ivk.Invoke(projPath, args.homePath, args.unityExe, args.logFile, not args.nobatch, not args.noquit)
     
     #place exported project in outPath/ instead of outPath/productName/
-    if ret == 0 and buildTarget == BuildTarget.Android and buildOpts.find(BuildOptions.AcceptExternalModificationsToPlayer) >= 0 and not args.aph:
+    if ret == 0 and buildTarget == BuildTarget.Android and BuildOptions.AcceptExternalModifications(buildOpts) and not args.aph:
         for dir in os.listdir(outPath):
             expDir = os.path.join(outPath, dir)
             if os.path.isdir(expDir):
@@ -213,6 +219,7 @@ def PackageCmd(args):
     buildTarget = BuildTarget.From(args.buildTarget)
     buildType = 'debug' if args.debug else 'release'
 
+    print('===Packge===')
     if not os.path.isdir(projPath):
         print('project directory not exist: %s' %projPath)
         return
@@ -228,11 +235,9 @@ def PackageCmd(args):
                 else:
                     GradleBuild(projPath, args.task, '', buildType, args.winOS)
             elif buildTarget == BuildTarget.iPhone:
-                pass
-            else:
-                print('invalid build target: %s' %buildTarget)
+                raise NotImplementedError
         except:
-            print('package command fail with excpetion')
+            print('package failed with excpetion')
     except:
         print('change working directory failed: %s' %projPath)
     finally:
@@ -252,6 +257,7 @@ def GradleBuild(projPath, task, flavor, buildType, winOS):
         ret = subprocess.call(argList)
         if ret != 0:
             print('execute gradle task failed with retcode:%s' %ret)
+            sys.exit(ret)
     else:
         print('invalid parameter, task:%s, flavor:%s, buildType:%s' %(task, flavor, buildType))
     pass
