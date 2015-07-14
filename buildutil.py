@@ -225,7 +225,6 @@ def InvokeCmd(args):
 def PackageCmd(args):
     projPath = Workspace.FullPath(args.projPath)
     buildTarget = BuildTarget.From(args.buildTarget)
-    outPath = Workspace.FullPath(args.outPath)
     buildType = 'debug' if args.debug else 'release'
 
     print('===Packge===')
@@ -234,7 +233,6 @@ def PackageCmd(args):
         return
     print('projectPath:     %s' %projPath)
     print('buildTarget:     %s' %buildTarget)
-    print('outPath:         %s' %outPath)
 
     try:
         lastDir = os.getcwd()
@@ -243,9 +241,9 @@ def PackageCmd(args):
             if buildTarget == BuildTarget.Android:
                 if args.pf:
                     for flavor in args.pf:
-                        Gradlew(projPath, outPath, args.task, flavor, buildType, args.winOS)
+                        Gradlew(projPath, args.task, flavor, buildType, args.prop, args.winOS)
                 else:
-                    Gradlew(projPath, outPath, args.task, '', buildType, args.winOS)
+                    Gradlew(projPath, args.task, '', buildType, args.prop, args.winOS)
             elif buildTarget == BuildTarget.iPhone:
                 raise NotImplementedError
         except:
@@ -256,7 +254,7 @@ def PackageCmd(args):
         os.chdir(lastDir)
     pass
 
-def Gradlew(projPath, outPath, task, flavor, buildType, winOS):
+def Gradlew(projPath, task, flavor, buildType, prop, winOS):
     flavor = str(flavor).lower()
     buildType = str(buildType).lower()
     if len(buildType) > 1:
@@ -265,15 +263,15 @@ def Gradlew(projPath, outPath, task, flavor, buildType, winOS):
                                                  flavor[1:] if len(flavor) > 1 else '',
                                                  buildType[0].upper(),
                                                  buildType[1:])]
+        if prop:
+            for p in prop:
+                argList.append('-P')
+                argList.append(p)
         print(argList)
         ret = subprocess.call(argList)
         if ret != 0:
             print('execute gradle task failed with retcode:%s' %ret)
             sys.exit(ret)
-        else:
-            if len(flavor) > 1 and task == GradleTask.Assemble:
-                baseName = os.path.basename(projPath)
-                Copy(os.path.join(projPath, 'build/outputs/apk/%s-%s-%s.apk' %(baseName, flavor, buildType)), outPath)
     else:
         print('invalid parameter, task:%s, flavor:%s, buildType:%s' %(task, flavor, buildType))
     pass
@@ -331,9 +329,9 @@ def ParseArgs(explicitArgs = None):
     package = subparsers.add_parser('package', help = 'package exported project, use gradle as Android build system')
     package.add_argument('projPath', help = 'target project path')
     package.add_argument('buildTarget', choices = ['android', 'ios'], help = 'build target type')
-    package.add_argument('outPath', help = 'package output path for productFlavors')
     package.add_argument('-pf', nargs = '+', help = 'gradle productFlavors, defined in your build.gradle script')
     package.add_argument('-task', choices = ['assemble', 'install', 'uninstall', 'lint', 'jar'], default = 'assemble', help = 'gradle task name prefix')
+    package.add_argument('-prop', action = 'append', help = 'gradle project property')
     package.add_argument('-debug', default = False, action = 'store_true', help = 'debug build type, default is release')
     package.set_defaults(func = PackageCmd)
 
