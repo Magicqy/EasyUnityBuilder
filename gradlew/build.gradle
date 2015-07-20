@@ -7,3 +7,52 @@ buildscript {
         classpath 'com.android.tools.build:gradle:1.2.3'
     }
 }
+
+apply plugin: 'com.android.application'
+
+//target exported android project path
+def projDir = hasProperty('targetProjDir') ? targetProjDir + '/' : ''
+if(hasProperty('targetProjDir')) {
+    println(String.format('targetProjDir:    %s', projDir))
+}
+//set build output directory path
+if(hasProperty('buildOutDir')) {
+    project.buildDir = project.buildOutDir
+    println(String.format('buildDir:    %s', project.buildDir))
+}
+
+android {
+    compileSdkVersion 22
+    buildToolsVersion "22.0.1"
+
+    defaultConfig {
+        minSdkVersion 9
+        targetSdkVersion 22
+    }
+    
+    lintOptions {
+        disable 'HardcodedDebugMode'    //for unity generate manifest
+    }
+    
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+    
+	sourceSets {
+        main {
+            manifest.srcFile    projDir + 'AndroidManifest.xml'
+            java.srcDir         projDir + 'src'
+            resources.srcDir    projDir + 'src'
+            aidl.srcDir         projDir + 'src'
+            res.srcDir          projDir + 'res'
+            assets.srcDir       projDir + 'assets'
+            jniLibs.srcDir      projDir + 'libs'
+        }
+	}
+}
+
+dependencies {
+    compile         fileTree(dir: projDir + 'libs', include: '*.jar')
+}
