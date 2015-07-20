@@ -11,11 +11,12 @@ buildscript {
 apply plugin: 'com.android.application'
 
 //target exported android project path
-def tarProjDir = hasProperty('targetProjDir') ? targetProjDir + '/' : ''
+def tarProjDir = project.hasProperty('targetProjDir') ? targetProjDir + '/' : ''
 
 println(String.format('targetProjDir:       %s', tarProjDir))
 println(String.format('buildDir:            %s', project.buildDir))
 println(String.format('archivesBaseName:    %s', archivesBaseName))
+
 android {
     compileSdkVersion 22
     buildToolsVersion "22.0.1"
