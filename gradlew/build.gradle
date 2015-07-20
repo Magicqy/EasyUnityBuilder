@@ -11,16 +11,11 @@ buildscript {
 apply plugin: 'com.android.application'
 
 //target exported android project path
-def projDir = hasProperty('targetProjDir') ? targetProjDir + '/' : ''
-if(hasProperty('targetProjDir')) {
-    println(String.format('targetProjDir:    %s', projDir))
-}
-//set build output directory path
-if(hasProperty('buildOutDir')) {
-    project.buildDir = project.buildOutDir
-    println(String.format('buildDir:    %s', project.buildDir))
-}
+def tarProjDir = hasProperty('targetProjDir') ? targetProjDir + '/' : ''
 
+println(String.format('targetProjDir:       %s', tarProjDir))
+println(String.format('buildDir:            %s', project.buildDir))
+println(String.format('archivesBaseName:    %s', archivesBaseName))
 android {
     compileSdkVersion 22
     buildToolsVersion "22.0.1"
@@ -42,17 +37,17 @@ android {
     
 	sourceSets {
         main {
-            manifest.srcFile    projDir + 'AndroidManifest.xml'
-            java.srcDir         projDir + 'src'
-            resources.srcDir    projDir + 'src'
-            aidl.srcDir         projDir + 'src'
-            res.srcDir          projDir + 'res'
-            assets.srcDir       projDir + 'assets'
-            jniLibs.srcDir      projDir + 'libs'
+            manifest.srcFile    tarProjDir + 'AndroidManifest.xml'
+            java.srcDir         tarProjDir + 'src'
+            resources.srcDir    tarProjDir + 'src'
+            aidl.srcDir         tarProjDir + 'src'
+            res.srcDir          tarProjDir + 'res'
+            assets.srcDir       tarProjDir + 'assets'
+            jniLibs.srcDir      tarProjDir + 'libs'
         }
 	}
 }
 
 dependencies {
-    compile         fileTree(dir: projDir + 'libs', include: '*.jar')
+    compile         fileTree(dir: tarProjDir + 'libs', include: '*.jar')
 }

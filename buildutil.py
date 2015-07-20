@@ -230,7 +230,9 @@ def PackageAndroidCmd(args):
     taskPrefix = args.task
     argList = [os.path.join(gradlePath, 'gradlew.bat' if args.winOS else 'gradlew'), '-p', projPath, '-b', buildFile]
     if not args.ndp:
-        argList.extend(['-P', 'targetProjDir=%s' %projPath, '-P', 'buildOutDir=%s' %os.path.join(projPath, 'build')])
+        argList.extend(['-P', 'targetProjDir=%s' %projPath,
+                        '-P', 'buildDir=%s' %os.path.join(projPath, 'build'),
+                        '-P', 'archivesBaseName=%s' %os.path.basename(projPath),])
     if args.prop:
         for kv in args.prop:
             argList.append('-P')
@@ -327,7 +329,10 @@ def ParseArgs(explicitArgs = None):
     par.add_argument('-task', choices = ['assemble', 'install', 'uninstall', 'lint', 'jar'], default = 'assemble', help = 'gradle task name prefix')
     par.add_argument('-debug', action = 'store_true', help = 'build for Debug or Release')
     par.add_argument('-prop', action = 'append', help = 'add gradle project property')
-    par.add_argument('-ndp', action = 'store_true', help = 'does not add two properties targetProjDir={projPath} and buildOutDir={projPath/build} by default')
+    par.add_argument('-ndp', action = 'store_true', help = '''does not add default properties
+    targetProjDir={projPath}
+    buildDir={projPath/build}
+    archivesBaseName={dirName(projPath)}''')
     par.set_defaults(func = PackageAndroidCmd)
 
     par = packageSp.add_parser('ios', help = 'pacakge iOS project with xCode')
