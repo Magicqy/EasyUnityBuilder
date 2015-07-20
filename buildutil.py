@@ -222,58 +222,50 @@ def InvokeCmd(args):
     ivk.Invoke(projPath, args.homePath, args.unityExe, args.logFile, not args.nobatch, not args.noquit)
     pass
 
-def PackageCmd(args):
+def PackageAndroidCmd(args):
     projPath = Workspace.FullPath(args.projPath)
-    buildTarget = BuildTarget.From(args.buildTarget)
-    buildType = 'debug' if args.debug else 'release'
+    gradlePath = os.path.join(args.homePath, 'gradlew')
+    buildFile = Workspace.FullPath(args.bf) if args.bf else os.path.join(projPath, 'build.gradle')
+    buildType = 'Debug' if args.debug else 'Release'
+    taskPrefix = args.task
+    argList = [os.path.join(gradlePath, 'gradlew.bat' if args.winOS else 'gradlew'), '-p', projPath, '-b', buildFile]
+    if not args.ndp:
+        argList.extend(['-P', 'targetProjDir=%s' %projPath, '-P', 'buildOutDir=%s' %os.path.join(projPath, 'build')])
+    if args.prop:
+        for kv in args.prop:
+            argList.append('-P')
+            argList.append(kv)
+    if args.pf:
+        for flavor in args.pf:
+            argList.append('%s%s%s%s' %(taskPrefix, flavor[0].upper(), flavor[1:], buildType))
+    else:
+        argList.append('%s%s' %(taskPrefix, buildType))
 
-    print('===Packge===')
     if not os.path.isdir(projPath):
         print('project directory not exist: %s' %projPath)
         return
+    if not os.path.isfile(buildFile):
+        print('build.gradle file not exist: %s' %buildFile)
+        return
+
+    print('===Packge Android===')
     print('projectPath:     %s' %projPath)
-    print('buildTarget:     %s' %buildTarget)
+    print('buildFile:       %s' %buildFile)
+    print('buildType:       %s' %buildType)
+    print(argList)
+    print('')
 
     try:
-        lastDir = os.getcwd()
-        os.chdir(projPath)
-        try:
-            if buildTarget == BuildTarget.Android:
-                if args.pf:
-                    for flavor in args.pf:
-                        Gradlew(projPath, args.task, flavor, buildType, args.prop, args.winOS)
-                else:
-                    Gradlew(projPath, args.task, '', buildType, args.prop, args.winOS)
-            elif buildTarget == BuildTarget.iPhone:
-                raise NotImplementedError
-        except:
-            print('package failed with excpetion')
-    except:
-        print('change working directory failed: %s' %projPath)
-    finally:
-        os.chdir(lastDir)
-    pass
-
-def Gradlew(projPath, task, flavor, buildType, prop, winOS):
-    flavor = str(flavor).lower()
-    buildType = str(buildType).lower()
-    if len(buildType) > 1:
-        argList = ['.\gradlew.bat' if winOS else './gradlew', '%s%s%s%s%s' %(task,
-                                                 flavor[0].upper() if len(flavor) > 1 else '',
-                                                 flavor[1:] if len(flavor) > 1 else '',
-                                                 buildType[0].upper(),
-                                                 buildType[1:])]
-        if prop:
-            for p in prop:
-                argList.append('-P')
-                argList.append(p)
-        print(argList)
         ret = subprocess.call(argList)
         if ret != 0:
-            print('execute gradle task failed with retcode:%s' %ret)
+            print('execute gradle task failed with retcode: %s' %ret)
             sys.exit(ret)
-    else:
-        print('invalid parameter, task:%s, flavor:%s, buildType:%s' %(task, flavor, buildType))
+    except:
+        print('package failed with excpetion')
+    pass
+
+def PackageiOSCmd(args):
+    raise NotImplementedError()
     pass
 
 def CopyCmd(args):
@@ -328,12 +320,18 @@ def ParseArgs(explicitArgs = None):
 
     package = subparsers.add_parser('package', help = 'package exported project, use gradle as Android build system')
     package.add_argument('projPath', help = 'target project path')
-    package.add_argument('buildTarget', choices = ['android', 'ios'], help = 'build target type')
-    package.add_argument('-pf', nargs = '+', help = 'gradle productFlavors, defined in your build.gradle script')
-    package.add_argument('-task', choices = ['assemble', 'install', 'uninstall', 'lint', 'jar'], default = 'assemble', help = 'gradle task name prefix')
-    package.add_argument('-prop', action = 'append', help = 'gradle project property')
-    package.add_argument('-debug', default = False, action = 'store_true', help = 'debug build type, default is release')
-    package.set_defaults(func = PackageCmd)
+    packageSp = package.add_subparsers(help = 'package sub parsers')
+    par = packageSp.add_parser('android', help = 'pacakge android project with Gralde')
+    par.add_argument('-bf', help = 'specifies the build file')
+    par.add_argument('-pf', nargs = '+', help = 'specifies the gradle productFlavors')
+    par.add_argument('-task', choices = ['assemble', 'install', 'uninstall', 'lint', 'jar'], default = 'assemble', help = 'gradle task name prefix')
+    par.add_argument('-debug', action = 'store_true', help = 'build for Debug or Release')
+    par.add_argument('-prop', action = 'append', help = 'add gradle project property')
+    par.add_argument('-ndp', action = 'store_true', help = 'does not add two properties targetProjDir={projPath} and buildOutDir={projPath/build} by default')
+    par.set_defaults(func = PackageAndroidCmd)
+
+    par = packageSp.add_parser('ios', help = 'pacakge iOS project with xCode')
+    par.set_defaults(func = PackageiOSCmd)
 
     copy = subparsers.add_parser('copy', help = 'copy file or directory')
     copy.add_argument('src', help = 'path to copy from')
