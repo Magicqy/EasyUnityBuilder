@@ -294,6 +294,7 @@ def PackageiOSCmd(args):
     buildType = 'Debug' if args.debug else 'Release'
     buildTarget = args.target
     buildSdk = str(args.sdk).lower()
+    outFile = Workspace.FullPath(args.outFile) if args.outFile else projPath + '.ipa'
     bundleId = None
     if args.provFile:
         provFile = Workspace.FullPath(args.provFile)
@@ -382,7 +383,7 @@ def PackageiOSCmd(args):
                '-sdk', buildSdk,
                'PackageApplication',
                '-v', os.path.join(buildDir, '%s.app' %baseName),
-               '-o', '%s.ipa' %projPath
+               '-o', outFile
                #'--sign', BuildArgs[K_CODE_SIGN_INFO][args.codesign][K_CODE_SIGN_ID],
                #'--embed', '/Users/Shared/Jenkins/Downloads/xxx/xxx.mobileprovision'
                ]
@@ -460,6 +461,7 @@ def ParseArgs(explicitArgs = None):
     group = par.add_mutually_exclusive_group(required = True)
     group.add_argument('-provFile', help = 'path of the .mobileprovision file')
     group.add_argument('-provUUID', help = 'UUID of the provision profile')
+    par.add_argument('-outFile', help = 'package output file')
     par.add_argument('-signId', default = 'Automatic', help = 'code sign identity such as "Apple Distribution: xxx..xxx..xxx", Automatic by default')
     par.add_argument('-debug', action = 'store_true', help = 'build for Debug or Release')
     par.add_argument('-target', default = 'Unity-iPhone', help = 'build target, Unity-iPhone by default')
