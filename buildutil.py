@@ -267,6 +267,10 @@ def PackageAndroidCmd(args):
     pass
 
 def PackageiOSCmd(args):
+    if args.winOS == False:
+        print('package iOS only support on MacOS')
+        sys.exit(1)
+
     projPath = Workspace.FullPath(args.projPath)
     buildType = 'Debug' if args.debug else 'Release'
     buildTarget = args.target
