@@ -355,7 +355,7 @@ def PackageiOSCmd(args):
                'SEPARATE_STRIP=YES',
                'COPY_PHASE_STRIP=YES']
     if args.opt:
-        argList.extend(opt)
+        argList.extend(args.opt)
     print(' '.join(argList))
     ret = subprocess.call(argList)
     if ret != 0:
