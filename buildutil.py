@@ -60,12 +60,12 @@ class Workspace:
         return os.path.abspath(os.path.expanduser(path)) if path else ''
 
     extSwitch = {
-        BuildTarget.Android : lambda e, o: '.apk' if o and len(e) == 0 else e,
-        BuildTarget.iPhone : lambda e, o: '.ipa' if o and len(e) == 0 else e,
-        BuildTarget.StandaloneWindows : lambda e, o: '/bin.exe' if len(e) == 0 else e,
-        BuildTarget.StandaloneWindows64 : lambda e, o: '/bin.exe' if len(e) == 0 else e,
-        BuildTarget.StandaloneOSXIntel : lambda e, o: '.app' if len(e) == 0 else e,
-        BuildTarget.StandaloneOSXIntel64 : lambda e, o: '.app' if len(e) == 0 else e,
+        BuildTarget.Android : lambda ext, noexp: '.apk' if noexp and len(ext) == 0 else ext,
+        BuildTarget.iPhone : lambda ext, noexp: ext,
+        BuildTarget.StandaloneWindows : lambda ext, noexp: '/bin.exe' if len(ext) == 0 else ext,
+        BuildTarget.StandaloneWindows64 : lambda ext, noexp: '/bin.exe' if len(ext) == 0 else ext,
+        BuildTarget.StandaloneOSXIntel : lambda ext, noexp: '.app' if len(ext) == 0 else ext,
+        BuildTarget.StandaloneOSXIntel64 : lambda ext, noexp: '.app' if len(ext) == 0 else ext,
         }
     @staticmethod
     def CorrectExt(outPath, buildTarget, buildOpts):
