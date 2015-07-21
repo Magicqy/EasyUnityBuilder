@@ -267,7 +267,89 @@ def PackageAndroidCmd(args):
     pass
 
 def PackageiOSCmd(args):
-    raise NotImplementedError()
+    projPath = Workspace.FullPath(args.projPath)
+    buildType = 'Debug' if args.debug else 'Release'
+    buildTarget = 'Unity-iPhone'
+    buildSdk = 'iphoneos8.2'
+    signId = args.signId
+    provId = args.provId
+    archiveBaseName = 'xiyou'
+    
+    if not os.path.isdir(projPath):
+        print('project directory not exist: %s' %projPath)
+        return
+
+    print('===Package iOS===')
+    print('projectPath:     %s' %projPath)
+    print('buildType:       %s' %buildType)
+    print('buildTarget:     %s' %buildTarget)
+    print('buildSdk:        %s' %buildSdk)
+    print('codeSign:        %s' %signId)
+    print('provision:       %s' %provId)
+    print('')
+    #try resolve the 'User Interaction Is Not Allowed' problem when run from shell
+    if args.keychain:
+        ret = subprocess.call(['security', 'unlock-keychain', '-p', args.keychain[1], Workspace.FullPath(args.keychain[0])])
+        if ret != 0:
+            print('unlock keychain failed with retcode: %s' %ret)
+
+    argList = ['xcodebuild',
+               '-project', '%s/%s.xcodeproj' %(projPath, buildTarget),
+               'clean',
+               '-target', buildTarget,
+               '-configuration', buildType]
+    print(' '.join(argList))
+    ret = subprocess.call(argList)
+    if ret != 0:
+        print('execute clean failed with retcode: %s' %ret)
+        sys.exit(ret)
+
+    argList = ['xcodebuild',
+               '-project', '%s/%s.xcodeproj' %(projPath, buildTarget),
+               '-sdk', buildSdk,
+               '-target', buildTarget,
+               '-configuration', buildType,
+               'CODE_SIGN_IDENTITY="%s"' %signId,
+               'PROVISIONING_PROFILE=%s' %provId,
+               'DEPLOYMENT_POSTPROCESSING=YES',
+               'STRIP_INSTALLED_PRODUCT=YES',
+               'SEPARATE_STRIP=YES',
+               'COPY_PHASE_STRIP=YES']
+    print(' '.join(argList))
+    ret = subprocess.call(argList)
+    if ret != 0:
+        print('execute xcodebuild failed with retcode: %s' %ret)
+        sys.exit(ret)
+    
+    #how to get archiveBaseName or bundle identifier?
+    for item in os.listdir('%s/build/Release-iphoneos' %projPath):
+        name, ext = os.path.splitext(item)
+        if ext == '.app':
+            print('base name found by %s' %item)
+            archiveBaseName = name
+            break
+
+    argList = ['/usr/bin/xcrun',
+               '-sdk', buildSdk,
+               'PackageApplication',
+               '-v', '%s/build/Release-iphoneos/%s.app' %(projPath, archiveBaseName),
+               '-o', '%s.ipa' %projPath
+               #'--sign', BuildArgs[K_CODE_SIGN_INFO][args.codesign][K_CODE_SIGN_ID],
+               #'--embed', '/Users/Shared/Jenkins/Downloads/xxx/xxx.mobileprovision'
+               ]
+    print(' '.join(argList))
+    ret = subprocess.call(argList)
+    if ret != 0:
+        print('execute xcrun failed with retcode: %s' %ret)
+        sys.exit(ret)
+    
+    #back up dSYM file for crash analysis
+    if args.bakdsym:
+    	shutil.copytree('%s/build/Release-iphoneos/%s.app.dSYM' %(projPath, archiveBaseName),
+    		'%s/../dSYM_Backup/%s.app_%s.dSYM' %(projPath, archiveBaseName, datetime.datetime.now().strftime('%Y%m%d_%H.%M.%S')))
+
+    #remove xcode project folder
+    #shutil.rmtree(projPath, True)
     pass
 
 def CopyCmd(args):
@@ -310,7 +392,7 @@ def ParseArgs(explicitArgs = None):
     build.add_argument('-opt', help = 'build options, see UnityEditor.BuildOptions for detail')
     build.add_argument('-exp', action = 'store_true', help = 'export project but not build it (android and ios only)')
     build.add_argument('-dev', action = 'store_true', help = 'development version, with debug symbols and enable profiler')
-    build.add_argument('-aph', default = False, action = 'store_false', help = 'keep android project hierarchy as outPath/[productName]/ instead of outPath/')
+    build.add_argument('-aph', default = False, action = 'store_false', help = 'keep android project hierarchy as outPath/{productName}/ instead of outPath/')
     build.set_defaults(func = BuildCmd)
 
     invoke = subparsers.add_parser('invoke', help = 'invoke method with arguments')
@@ -323,7 +405,7 @@ def ParseArgs(explicitArgs = None):
     package = subparsers.add_parser('package', help = 'package exported project, use gradle as Android build system')
     package.add_argument('projPath', help = 'target project path')
     packageSp = package.add_subparsers(help = 'package sub parsers')
-    par = packageSp.add_parser('android', help = 'pacakge android project with Gralde')
+    par = packageSp.add_parser('android', help = 'pacakge android project with gralde')
     par.add_argument('-bf', help = 'specifies the build file')
     par.add_argument('-pf', nargs = '+', help = 'specifies the gradle productFlavors')
     par.add_argument('-task', choices = ['assemble', 'install', 'uninstall', 'lint', 'jar'], default = 'assemble', help = 'gradle task name prefix')
@@ -336,6 +418,13 @@ def ParseArgs(explicitArgs = None):
     par.set_defaults(func = PackageAndroidCmd)
 
     par = packageSp.add_parser('ios', help = 'pacakge iOS project with xCode')
+    par.add_argument('-debug', action = 'store_true', help = 'build for Debug or Release')
+    par.add_argument('-signId', default = 'Automatic', help = 'code sign identity such as "Apple Distribution: xxx..xxx..xxx", use Automatic by default')
+    par.add_argument('-provId', help = 'identity of the provision profile')
+    par.add_argument('-sdk', help = 'build sdk version, such as iphoneos8.2')
+    par.add_argument('-target', help = 'build target, such as Unity-iPhone')
+    par.add_argument('-keychain', nargs = 2, help = 'keychain path and passowrd, unlock keychain (usually ~/Library/Keychains/login.keychain) to workaround when "User Interaction Is Not Allowed"')
+    par.add_argument('-bakdsym', action = 'store_true', help = 'backup dSYM file after package')
     par.set_defaults(func = PackageiOSCmd)
 
     copy = subparsers.add_parser('copy', help = 'copy file or directory')
