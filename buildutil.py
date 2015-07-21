@@ -71,6 +71,25 @@ class Workspace:
     def CorrectExt(outPath, buildTarget, buildOpts):
         root, ext = os.path.splitext(outPath)
         return root + Workspace.extSwitch[buildTarget](ext, buildOpts.find(BuildOptions.AcceptExternalModificationsToPlayer) < 0)
+
+    @staticmethod
+    def GetKeyValuesFromProvXml(provXml):
+        lines = str(provXml).splitlines()
+        for i in xrange(0, len(lines)):
+            lines[i] = lines[i].strip()
+            
+        idx = lines.index('<key>com.apple.developer.team-identifier</key>')
+        teamId = str(lines[idx + 1])[len('<string>') : -len('</string>')]
+
+        idx = lines.index('<key>application-identifier</key>')
+        bundleId = str(lines[idx + 1])[len('<string>') + len(teamId) + 1 : -len('</string>')]    
+        
+        idx = lines.index('<key>TeamName</key>')
+        teamName = str(lines[idx + 1])[len('<string>') : -len('</string>')]
+
+        idx = lines.index('<key>UUID</key>')
+        uuid = str(lines[idx + 1])[len('<string>') : -len('</string>')]
+        return bundleId, teamName, uuid
     pass
 
 #util methods
@@ -274,9 +293,25 @@ def PackageiOSCmd(args):
     projPath = Workspace.FullPath(args.projPath)
     buildType = 'Debug' if args.debug else 'Release'
     buildTarget = args.target
-    buildSdk = args.sdk
-    provId = args.provId
-    signId = args.signId
+    buildSdk = str(args.sdk).lower()
+    bundleId = None
+    if args.provFile:
+        provFile = Workspace.FullPath(args.provFile)
+        if os.path.isfile(provFile):
+            try:
+                argList = ['security', 'cms', '-D', '-i', provFile]
+                print(' '.join(argList))
+                provXml = subprocess.check_output(argList)
+                bundleId, signId, provId = Workspace.GetKeyValuesFromProvXml(provXml)
+            except:
+                print('get key values from provision file failed: %s' %provFile)
+                sys.exit(1)
+        else:
+            print('provision file not exists: %s' %provFile)
+            sys.exit(1)
+    elif args.provUUID:
+        provId = args.provUUID
+        signId = args.signId
     
     if not os.path.isdir(projPath):
         print('project directory not exist: %s' %projPath)
@@ -289,6 +324,7 @@ def PackageiOSCmd(args):
     print('buildSdk:        %s' %buildSdk)
     print('provision:       %s' %provId)
     print('codeSign:        %s' %signId)
+    print('bundleId:        %s' %bundleId)
     print('')
     #try resolve the 'User Interaction Is Not Allowed' problem when run from shell
     if args.keychain:
@@ -318,6 +354,8 @@ def PackageiOSCmd(args):
                'STRIP_INSTALLED_PRODUCT=YES',
                'SEPARATE_STRIP=YES',
                'COPY_PHASE_STRIP=YES']
+    if args.opt:
+        argList.extend(opt)
     print(' '.join(argList))
     ret = subprocess.call(argList)
     if ret != 0:
@@ -327,15 +365,18 @@ def PackageiOSCmd(args):
     #how to get archiveBaseName or bundle identifier?
     baseName = ''
     buildDir = os.path.join(projPath, 'build/%s-iphoneos' %buildType)
-    if os.path.isdir(buildDir):
-        for item in os.listdir(buildDir):
-            name, ext = os.path.splitext(item)
-            if ext == '.app':
-                print('base name found by %s' %item)
-                baseName = name
+    if bundleId:
+        baseName = bundleId.split('.')[-1]
     else:
-        print('build output directory not found: %s' %buildDir)
-        sys.exit(1)
+        if os.path.isdir(buildDir):
+            for item in os.listdir(buildDir):
+                name, ext = os.path.splitext(item)
+                if ext == '.app':
+                    print('base name found by %s' %item)
+                    baseName = name
+        else:
+            print('build output directory not found: %s' %buildDir)
+            sys.exit(1)
 
     argList = ['/usr/bin/xcrun',
                '-sdk', buildSdk,
@@ -350,11 +391,6 @@ def PackageiOSCmd(args):
     if ret != 0:
         print('execute xcrun failed with retcode: %s' %ret)
         sys.exit(ret)
-    
-    #back up dSYM file for crash analysis
-    if args.bakdsym:
-    	shutil.copytree(os.path.join(buildDir, '%s.app.dSYM' %baseName),
-                     os.path.join(Workspace.FullPath(args.bakdsym), '%s.app_%s.dSYM' %(baseName, datetime.datetime.now().strftime('%Y%m%d_%H.%M.%S'))))
     pass
 
 def CopyCmd(args):
@@ -417,19 +453,20 @@ def ParseArgs(explicitArgs = None):
     par.add_argument('-debug', action = 'store_true', help = 'build for Debug or Release')
     par.add_argument('-prop', action = 'append', help = 'add gradle project property')
     par.add_argument('-ndp', action = 'store_true', help = '''does not add default properties
-    targetProjDir={projPath}
-    buildDir={projPath/build}
-    archivesBaseName={dirName(projPath)}''')
+    targetProjDir={projPath}, buildDir={projPath/build}, archivesBaseName={dirName(projPath)}''')
     par.set_defaults(func = PackageAndroidCmd)
 
     par = packageSp.add_parser('ios', help = 'pacakge iOS project with xCode')
-    par.add_argument('provId', help = 'identity of the provision profile')
+    group = par.add_mutually_exclusive_group(required = True)
+    group.add_argument('-provFile', help = 'path of the .mobileprovision file')
+    group.add_argument('-provUUID', help = 'UUID of the provision profile')
+    par.add_argument('-signId', default = 'Automatic', help = 'code sign identity such as "Apple Distribution: xxx..xxx..xxx", Automatic by default')
     par.add_argument('-debug', action = 'store_true', help = 'build for Debug or Release')
-    par.add_argument('-signId', default = 'Automatic', help = 'code sign identity such as "Apple Distribution: xxx..xxx..xxx", use Automatic by default')
     par.add_argument('-target', default = 'Unity-iPhone', help = 'build target, Unity-iPhone by default')
     par.add_argument('-sdk', default = 'iphoneos8.2', help = 'build sdk version, iphoneos8.2 by default')
     par.add_argument('-keychain', nargs = 2, help = 'keychain path and passowrd, unlock keychain (usually ~/Library/Keychains/login.keychain) to workaround when "User Interaction Is Not Allowed"')
-    par.add_argument('-bakdsym', help = 'backup dSYM files for crash analysis')
+    par.add_argument('-opt', action = 'append', help = '''additional build options.
+    DEPLOYMENT_POSTPROCESSING=YES, STRIP_INSTALLED_PRODUCT=YES, SEPARATE_STRIP=YES, COPY_PHASE_STRIP=YES by default''')
     par.set_defaults(func = PackageiOSCmd)
 
     copy = subparsers.add_parser('copy', help = 'copy file or directory')
