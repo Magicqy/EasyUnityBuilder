@@ -269,11 +269,10 @@ def PackageAndroidCmd(args):
 def PackageiOSCmd(args):
     projPath = Workspace.FullPath(args.projPath)
     buildType = 'Debug' if args.debug else 'Release'
-    buildTarget = 'Unity-iPhone'
-    buildSdk = 'iphoneos8.2'
-    signId = args.signId
+    buildTarget = args.target
+    buildSdk = args.sdk
     provId = args.provId
-    archiveBaseName = 'xiyou'
+    signId = args.signId
     
     if not os.path.isdir(projPath):
         print('project directory not exist: %s' %projPath)
@@ -284,8 +283,8 @@ def PackageiOSCmd(args):
     print('buildType:       %s' %buildType)
     print('buildTarget:     %s' %buildTarget)
     print('buildSdk:        %s' %buildSdk)
-    print('codeSign:        %s' %signId)
     print('provision:       %s' %provId)
+    print('codeSign:        %s' %signId)
     print('')
     #try resolve the 'User Interaction Is Not Allowed' problem when run from shell
     if args.keychain:
@@ -294,7 +293,7 @@ def PackageiOSCmd(args):
             print('unlock keychain failed with retcode: %s' %ret)
 
     argList = ['xcodebuild',
-               '-project', '%s/%s.xcodeproj' %(projPath, buildTarget),
+               '-project', os.path.join(projPath, '%s.xcodeproj' %buildTarget),
                'clean',
                '-target', buildTarget,
                '-configuration', buildType]
@@ -305,12 +304,12 @@ def PackageiOSCmd(args):
         sys.exit(ret)
 
     argList = ['xcodebuild',
-               '-project', '%s/%s.xcodeproj' %(projPath, buildTarget),
+               '-project', os.path.join(projPath, '%s.xcodeproj' %buildTarget),
                '-sdk', buildSdk,
                '-target', buildTarget,
                '-configuration', buildType,
-               'CODE_SIGN_IDENTITY="%s"' %signId,
                'PROVISIONING_PROFILE=%s' %provId,
+               'CODE_SIGN_IDENTITY="%s"' %signId,
                'DEPLOYMENT_POSTPROCESSING=YES',
                'STRIP_INSTALLED_PRODUCT=YES',
                'SEPARATE_STRIP=YES',
@@ -322,17 +321,22 @@ def PackageiOSCmd(args):
         sys.exit(ret)
     
     #how to get archiveBaseName or bundle identifier?
-    for item in os.listdir('%s/build/Release-iphoneos' %projPath):
-        name, ext = os.path.splitext(item)
-        if ext == '.app':
-            print('base name found by %s' %item)
-            archiveBaseName = name
-            break
+    baseName = ''
+    buildDir = os.path.join(projPath, 'build/%s-iphoneos' %buildType)
+    if os.path.isdir(buildDir):
+        for item in os.listdir(buildDir):
+            name, ext = os.path.splitext(item)
+            if ext == '.app':
+                print('base name found by %s' %item)
+                baseName = name
+    else:
+        print('build output directory not found: %s' %buildDir)
+        sys.exit(1)
 
     argList = ['/usr/bin/xcrun',
                '-sdk', buildSdk,
                'PackageApplication',
-               '-v', '%s/build/Release-iphoneos/%s.app' %(projPath, archiveBaseName),
+               '-v', os.path.join(buildDir, '%s.app' %baseName),
                '-o', '%s.ipa' %projPath
                #'--sign', BuildArgs[K_CODE_SIGN_INFO][args.codesign][K_CODE_SIGN_ID],
                #'--embed', '/Users/Shared/Jenkins/Downloads/xxx/xxx.mobileprovision'
@@ -345,11 +349,8 @@ def PackageiOSCmd(args):
     
     #back up dSYM file for crash analysis
     if args.bakdsym:
-    	shutil.copytree('%s/build/Release-iphoneos/%s.app.dSYM' %(projPath, archiveBaseName),
-    		'%s/../dSYM_Backup/%s.app_%s.dSYM' %(projPath, archiveBaseName, datetime.datetime.now().strftime('%Y%m%d_%H.%M.%S')))
-
-    #remove xcode project folder
-    #shutil.rmtree(projPath, True)
+    	shutil.copytree(os.path.join(buildDir, '%s.app.dSYM' %baseName),
+                     os.path.join(Workspace.FullPath(args.bakdsym), '%s.app_%s.dSYM' %(baseName, datetime.datetime.now().strftime('%Y%m%d_%H.%M.%S'))))
     pass
 
 def CopyCmd(args):
@@ -418,13 +419,13 @@ def ParseArgs(explicitArgs = None):
     par.set_defaults(func = PackageAndroidCmd)
 
     par = packageSp.add_parser('ios', help = 'pacakge iOS project with xCode')
+    par.add_argument('provId', help = 'identity of the provision profile')
     par.add_argument('-debug', action = 'store_true', help = 'build for Debug or Release')
     par.add_argument('-signId', default = 'Automatic', help = 'code sign identity such as "Apple Distribution: xxx..xxx..xxx", use Automatic by default')
-    par.add_argument('-provId', help = 'identity of the provision profile')
-    par.add_argument('-sdk', help = 'build sdk version, such as iphoneos8.2')
-    par.add_argument('-target', help = 'build target, such as Unity-iPhone')
+    par.add_argument('-target', default = 'Unity-iPhone', help = 'build target, Unity-iPhone by default')
+    par.add_argument('-sdk', default = 'iphoneos8.2', help = 'build sdk version, iphoneos8.2 by default')
     par.add_argument('-keychain', nargs = 2, help = 'keychain path and passowrd, unlock keychain (usually ~/Library/Keychains/login.keychain) to workaround when "User Interaction Is Not Allowed"')
-    par.add_argument('-bakdsym', action = 'store_true', help = 'backup dSYM file after package')
+    par.add_argument('-bakdsym', help = 'backup dSYM files for crash analysis')
     par.set_defaults(func = PackageiOSCmd)
 
     copy = subparsers.add_parser('copy', help = 'copy file or directory')
