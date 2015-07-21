@@ -465,7 +465,7 @@ def ParseArgs(explicitArgs = None):
     par.add_argument('-target', default = 'Unity-iPhone', help = 'build target, Unity-iPhone by default')
     par.add_argument('-sdk', default = 'iphoneos8.2', help = 'build sdk version, iphoneos8.2 by default')
     par.add_argument('-keychain', nargs = 2, help = 'keychain path and passowrd, unlock keychain (usually ~/Library/Keychains/login.keychain) to workaround when "User Interaction Is Not Allowed"')
-    par.add_argument('-opt', action = 'append', help = '''additional build options.
+    par.add_argument('-opt', nargs = '+', help = '''additional build options.
     DEPLOYMENT_POSTPROCESSING=YES, STRIP_INSTALLED_PRODUCT=YES, SEPARATE_STRIP=YES, COPY_PHASE_STRIP=YES by default''')
     par.set_defaults(func = PackageiOSCmd)
 
