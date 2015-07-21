@@ -191,7 +191,7 @@ class Invoker:
             try:
                 Setup(projPath, homePath)
                 print('')
-                print(argList)
+                print(' '.join(argList))
                 ret = subprocess.call(argList)
                 if ret != 0:
                     print('execute fail with retcode: %s' %ret)
@@ -273,10 +273,10 @@ def PackageAndroidCmd(args):
     print('projectPath:     %s' %projPath)
     print('buildFile:       %s' %buildFile)
     print('buildType:       %s' %buildType)
-    print(argList)
     print('')
 
     try:
+        print(' '.join(argList))
         ret = subprocess.call(argList)
         if ret != 0:
             print('execute gradle task failed with retcode: %s' %ret)
