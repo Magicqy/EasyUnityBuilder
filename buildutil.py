@@ -267,7 +267,7 @@ def PackageAndroidCmd(args):
     pass
 
 def PackageiOSCmd(args):
-    if args.winOS == False:
+    if args.winOS != False:
         print('package iOS only support on MacOS')
         sys.exit(1)
 
