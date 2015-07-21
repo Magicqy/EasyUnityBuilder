@@ -451,7 +451,7 @@ def ParseArgs(explicitArgs = None):
     par.add_argument('-pf', nargs = '+', help = 'specifies the gradle productFlavors')
     par.add_argument('-task', choices = ['assemble', 'install', 'uninstall', 'lint', 'jar'], default = 'assemble', help = 'gradle task name prefix')
     par.add_argument('-debug', action = 'store_true', help = 'build for Debug or Release')
-    par.add_argument('-prop', action = 'append', help = 'add gradle project property')
+    par.add_argument('-prop', nargs = '+', help = 'add gradle project property')
     par.add_argument('-ndp', action = 'store_true', help = '''does not add default properties
     targetProjDir={projPath}, buildDir={projPath/build}, archivesBaseName={dirName(projPath)}''')
     par.set_defaults(func = PackageAndroidCmd)
@@ -477,7 +477,7 @@ def ParseArgs(explicitArgs = None):
 
     delete = subparsers.add_parser('del', help = 'delete file or directory')
     delete.add_argument('src', help = 'path to delete')
-    delete.add_argument('-sfx', action = 'append', help = 'also delete path (src + suffix), useful for unity .meta files')
+    delete.add_argument('-sfx', nargs = '+', help = 'also delete path (src + suffix), useful for unity .meta files')
     delete.set_defaults(func = DelCmd)
 
     return parser.parse_args(explicitArgs)
