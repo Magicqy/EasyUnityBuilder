@@ -105,7 +105,7 @@ def Cleanup(projPath):
 def Copy(src, dst, stat = False):
     if src == dst or src == None or not os.path.exists(src):
         print('copy failed, %s >> %s' %(src, dst))
-        return
+        sys.exit(1)
 
     if os.path.isdir(src):
         #src and dst are dirs
@@ -264,10 +264,10 @@ def PackageAndroidCmd(args):
 
     if not os.path.isdir(projPath):
         print('project directory not exist: %s' %projPath)
-        return
+        sys.exit(1)
     if not os.path.isfile(buildFile):
         print('build.gradle file not exist: %s' %buildFile)
-        return
+        sys.exit(1)
 
     print('===Packge Android===')
     print('projectPath:     %s' %projPath)
@@ -294,8 +294,10 @@ def PackageiOSCmd(args):
     buildType = 'Debug' if args.debug else 'Release'
     buildTarget = args.target
     buildSdk = str(args.sdk).lower()
-    outFile = Workspace.FullPath(args.outFile) if args.outFile else projPath + '.ipa'
-    bundleId = None
+    pkgOutFile = Workspace.FullPath(args.outFile) if args.outFile else projPath + '.ipa'
+    productName = args.proName
+    provId = None
+    signId = None
     if args.provFile:
         provFile = Workspace.FullPath(args.provFile)
         if os.path.isfile(provFile):
@@ -304,28 +306,30 @@ def PackageiOSCmd(args):
                 print(' '.join(argList))
                 provXml = subprocess.check_output(argList)
                 bundleId, signId, provId = Workspace.GetKeyValuesFromProvXml(provXml)
+                print('read from provision file: %s    %s    %s' %(bundleId, signId, provId))
             except:
                 print('get key values from provision file failed: %s' %provFile)
                 sys.exit(1)
         else:
             print('provision file not exists: %s' %provFile)
             sys.exit(1)
-    elif args.provUUID:
-        provId = args.provUUID
+    elif args.provUuid:
+        provId = args.provUuid
         signId = args.signId
     
     if not os.path.isdir(projPath):
         print('project directory not exist: %s' %projPath)
-        return
+        sys.exit(1)
 
     print('===Package iOS===')
     print('projectPath:     %s' %projPath)
     print('buildType:       %s' %buildType)
     print('buildTarget:     %s' %buildTarget)
     print('buildSdk:        %s' %buildSdk)
-    print('provision:       %s' %provId)
+    print('provisionUuid:   %s' %provId)
     print('codeSign:        %s' %signId)
-    print('bundleId:        %s' %bundleId)
+    print('productName:     %s' %productName)
+    print('pkgOutFile:      %s' %pkgOutFile)
     print('')
     #try resolve the 'User Interaction Is Not Allowed' problem when run from shell
     if args.keychain:
@@ -351,6 +355,7 @@ def PackageiOSCmd(args):
                '-configuration', buildType,
                'PROVISIONING_PROFILE=%s' %provId,
                'CODE_SIGN_IDENTITY="%s"' %signId,
+               'PRODUCT_NAME=%s' %productName,
                'DEPLOYMENT_POSTPROCESSING=YES',
                'STRIP_INSTALLED_PRODUCT=YES',
                'SEPARATE_STRIP=YES',
@@ -364,26 +369,16 @@ def PackageiOSCmd(args):
         sys.exit(ret)
     
     #how to get archiveBaseName or bundle identifier?
-    baseName = ''
-    buildDir = os.path.join(projPath, 'build/%s-iphoneos' %buildType)
-    if bundleId:
-        baseName = bundleId.split('.')[-1]
-    else:
-        if os.path.isdir(buildDir):
-            for item in os.listdir(buildDir):
-                name, ext = os.path.splitext(item)
-                if ext == '.app':
-                    print('base name found by %s' %item)
-                    baseName = name
-        else:
-            print('build output directory not found: %s' %buildDir)
-            sys.exit(1)
+    buildOutFile = os.path.join(projPath, 'build/%s-iphoneos/%s.app' %(buildType, productName))
+    if not os.path.exists(buildOutFile):
+        print('build output file not exist: %s' %buildOutFile)
+        sys.exit(1)
 
     argList = ['/usr/bin/xcrun',
                '-sdk', buildSdk,
                'PackageApplication',
-               '-v', os.path.join(buildDir, '%s.app' %baseName),
-               '-o', outFile
+               '-v', buildOutFile,
+               '-o', pkgOutFile
                #'--sign', BuildArgs[K_CODE_SIGN_INFO][args.codesign][K_CODE_SIGN_ID],
                #'--embed', '/Users/Shared/Jenkins/Downloads/xxx/xxx.mobileprovision'
                ]
@@ -460,15 +455,16 @@ def ParseArgs(explicitArgs = None):
     par = packageSp.add_parser('ios', help = 'pacakge iOS project with xCode')
     group = par.add_mutually_exclusive_group(required = True)
     group.add_argument('-provFile', help = 'path of the .mobileprovision file')
-    group.add_argument('-provUUID', help = 'UUID of the provision profile')
-    par.add_argument('-outFile', help = 'package output file')
-    par.add_argument('-signId', default = 'Automatic', help = 'code sign identity such as "Apple Distribution: xxx..xxx..xxx", Automatic by default')
+    group.add_argument('-provUuid', help = 'UUID of the provision profile')
+    par.add_argument('-signId', default = 'Automatic', help = 'code sign identity, Automatic by default')
+    par.add_argument('-proName', default = 'product', help = 'product name, product by default')
+    par.add_argument('-outFile', help = 'package output file path')
     par.add_argument('-debug', action = 'store_true', help = 'build for Debug or Release')
     par.add_argument('-target', default = 'Unity-iPhone', help = 'build target, Unity-iPhone by default')
     par.add_argument('-sdk', default = 'iphoneos8.2', help = 'build sdk version, iphoneos8.2 by default')
     par.add_argument('-keychain', nargs = 2, help = 'keychain path and passowrd, unlock keychain (usually ~/Library/Keychains/login.keychain) to workaround when "User Interaction Is Not Allowed"')
     par.add_argument('-opt', nargs = '+', help = '''additional build options.
-    DEPLOYMENT_POSTPROCESSING=YES, STRIP_INSTALLED_PRODUCT=YES, SEPARATE_STRIP=YES, COPY_PHASE_STRIP=YES by default.
+    PRODUCT_NAME={proName} DEPLOYMENT_POSTPROCESSING=YES, STRIP_INSTALLED_PRODUCT=YES, SEPARATE_STRIP=YES, COPY_PHASE_STRIP=YES by default.
     check https://developer.apple.com/library/mac/documentation/DeveloperTools/Reference/XcodeBuildSettingRef for more information.''')
     par.set_defaults(func = PackageiOSCmd)
 
