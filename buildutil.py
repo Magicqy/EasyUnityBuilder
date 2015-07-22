@@ -333,7 +333,9 @@ def PackageiOSCmd(args):
     print('')
     #try resolve the 'User Interaction Is Not Allowed' problem when run from shell
     if args.keychain:
-        ret = subprocess.call(['security', 'unlock-keychain', '-p', args.keychain[1], Workspace.FullPath(args.keychain[0])])
+        argList = ['security', 'unlock-keychain', '-p', args.keychain[1], Workspace.FullPath(args.keychain[0])]
+        print(' '.join(argList))
+        ret = subprocess.call(argList)
         if ret != 0:
             print('unlock keychain failed with retcode: %s' %ret)
 
@@ -462,7 +464,9 @@ def ParseArgs(explicitArgs = None):
     par.add_argument('-debug', action = 'store_true', help = 'build for Debug or Release')
     par.add_argument('-target', default = 'Unity-iPhone', help = 'build target, Unity-iPhone by default')
     par.add_argument('-sdk', default = 'iphoneos8.2', help = 'build sdk version, iphoneos8.2 by default')
-    par.add_argument('-keychain', nargs = 2, help = 'keychain path and passowrd, unlock keychain (usually ~/Library/Keychains/login.keychain) to workaround when "User Interaction Is Not Allowed"')
+    par.add_argument('-keychain', nargs = 2, help = '''keychain path and passowrd.
+    unlock keychain (usually ~/Library/Keychains/login.keychain) to workaround when "User Interaction Is Not Allowed".
+    first time need click 'Always Allow' button on the system messagebox''')
     par.add_argument('-opt', nargs = '+', help = '''additional build options.
     PRODUCT_NAME={proName} DEPLOYMENT_POSTPROCESSING=YES, STRIP_INSTALLED_PRODUCT=YES, SEPARATE_STRIP=YES, COPY_PHASE_STRIP=YES by default.
     check https://developer.apple.com/library/mac/documentation/DeveloperTools/Reference/XcodeBuildSettingRef for more information.''')
