@@ -453,8 +453,8 @@ def ParseArgs(explicitArgs = None):
     par.add_argument('-task', choices = ['assemble', 'install', 'uninstall', 'lint', 'jar'], default = 'assemble', help = 'gradle task name prefix')
     par.add_argument('-debug', action = 'store_true', help = 'build for Debug or Release')
     par.add_argument('-prop', nargs = '+', help = 'add gradle project property')
-    par.add_argument('-ndp', action = 'store_true', help = '''does not add default properties
-    targetProjDir={projPath}, buildDir={projPath/build}, archivesBaseName={dirName(projPath)}''')
+    par.add_argument('-ndp', action = 'store_true', help = '''does not add default properties.
+    targetProjDir={projPath}, buildDir={projPath/build}, archivesBaseName={dirName(projPath)} by default.''')
     par.set_defaults(func = PackageAndroidCmd)
 
     par = packageSp.add_parser('ios', help = 'pacakge iOS project with xCode')
@@ -468,7 +468,8 @@ def ParseArgs(explicitArgs = None):
     par.add_argument('-sdk', default = 'iphoneos8.2', help = 'build sdk version, iphoneos8.2 by default')
     par.add_argument('-keychain', nargs = 2, help = 'keychain path and passowrd, unlock keychain (usually ~/Library/Keychains/login.keychain) to workaround when "User Interaction Is Not Allowed"')
     par.add_argument('-opt', nargs = '+', help = '''additional build options.
-    DEPLOYMENT_POSTPROCESSING=YES, STRIP_INSTALLED_PRODUCT=YES, SEPARATE_STRIP=YES, COPY_PHASE_STRIP=YES by default''')
+    DEPLOYMENT_POSTPROCESSING=YES, STRIP_INSTALLED_PRODUCT=YES, SEPARATE_STRIP=YES, COPY_PHASE_STRIP=YES by default.
+    check https://developer.apple.com/library/mac/documentation/DeveloperTools/Reference/XcodeBuildSettingRef for more information.''')
     par.set_defaults(func = PackageiOSCmd)
 
     copy = subparsers.add_parser('copy', help = 'copy file or directory')
