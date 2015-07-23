@@ -463,7 +463,7 @@ def ParseArgs(explicitArgs = None):
     par.add_argument('-outFile', help = 'package output file path')
     par.add_argument('-debug', action = 'store_true', help = 'build for Debug or Release')
     par.add_argument('-target', default = 'Unity-iPhone', help = 'build target, Unity-iPhone by default')
-    par.add_argument('-sdk', default = 'iphoneos8.2', help = 'build sdk version, iphoneos8.2 by default')
+    par.add_argument('-sdk', default = 'iphoneos', help = 'build sdk version, latest iphoneos by default')
     par.add_argument('-keychain', nargs = 2, help = '''keychain path and passowrd.
     unlock keychain (usually ~/Library/Keychains/login.keychain) to workaround when "User Interaction Is Not Allowed".
     first time need click 'Always Allow' button on the system messagebox''')
