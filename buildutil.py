@@ -272,7 +272,7 @@ def PackageiOSCmd(args):
     buildSdk = str(args.sdk).lower()
     pkgOutFile = Workspace.FullPath(args.outFile) if args.outFile else projPath + '.ipa'
     productName = args.proName
-    provId = None
+    provProfile = None
     if args.provFile:
         provFile = Workspace.FullPath(args.provFile)
         if os.path.isfile(provFile):
@@ -281,7 +281,7 @@ def PackageiOSCmd(args):
                 print(' '.join(argList))
                 provStr = subprocess.check_output(argList)
                 prov = plistlib.readPlistFromString(provStr)
-                provId = prov['UUID']
+                provProfile = prov['UUID']
             except:
                 print('get key values from provision file failed: %s' %provFile)
                 sys.exit(1)
@@ -289,9 +289,9 @@ def PackageiOSCmd(args):
             print('provision file not exists: %s' %provFile)
             sys.exit(1)
     elif args.provUuid:
-        provId = args.provUuid
+        provProfile = args.provUuid
     else:
-        provId = args.provName
+        provProfile = args.provName
     
     if not os.path.isdir(projPath):
         print('project directory not exist: %s' %projPath)
@@ -302,8 +302,7 @@ def PackageiOSCmd(args):
     print('buildType:       %s' %buildType)
     print('buildTarget:     %s' %buildTarget)
     print('buildSdk:        %s' %buildSdk)
-    print('provisionUuid:   %s' %provId)
-    print('codeSign:        %s' %signId)
+    print('provision:       %s' %provProfile)
     print('productName:     %s' %productName)
     print('pkgOutFile:      %s' %pkgOutFile)
     print('')
@@ -331,7 +330,7 @@ def PackageiOSCmd(args):
                '-sdk', buildSdk,
                '-target', buildTarget,
                '-configuration', buildType,
-               'PROVISIONING_PROFILE=%s' %provId,
+               'PROVISIONING_PROFILE=%s' %provProfile,
                'PRODUCT_NAME=%s' %productName,
                'DEPLOYMENT_POSTPROCESSING=YES',
                'STRIP_INSTALLED_PRODUCT=YES',
