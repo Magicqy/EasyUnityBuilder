@@ -1,10 +1,5 @@
 ﻿#!/usr/bin/python
-import subprocess
-import argparse
-import datetime
-import shutil
-import sys
-import os
+import os, sys, shutil, datetime, argparse, subprocess, plistlib
 
 class BuildTarget:
     Android = 'Android'
@@ -71,25 +66,6 @@ class Workspace:
     def CorrectExt(outPath, buildTarget, buildOpts):
         root, ext = os.path.splitext(outPath)
         return root + Workspace.extSwitch[buildTarget](ext, buildOpts.find(BuildOptions.AcceptExternalModificationsToPlayer) < 0)
-
-    @staticmethod
-    def GetKeyValuesFromProvXml(provXml):
-        lines = str(provXml).splitlines()
-        for i in xrange(0, len(lines)):
-            lines[i] = lines[i].strip()
-            
-        idx = lines.index('<key>com.apple.developer.team-identifier</key>')
-        teamId = str(lines[idx + 1])[len('<string>') : -len('</string>')]
-
-        idx = lines.index('<key>application-identifier</key>')
-        bundleId = str(lines[idx + 1])[len('<string>') + len(teamId) + 1 : -len('</string>')]    
-        
-        idx = lines.index('<key>TeamName</key>')
-        teamName = str(lines[idx + 1])[len('<string>') : -len('</string>')]
-
-        idx = lines.index('<key>UUID</key>')
-        uuid = str(lines[idx + 1])[len('<string>') : -len('</string>')]
-        return bundleId, teamName, uuid
     pass
 
 #util methods
@@ -297,16 +273,15 @@ def PackageiOSCmd(args):
     pkgOutFile = Workspace.FullPath(args.outFile) if args.outFile else projPath + '.ipa'
     productName = args.proName
     provId = None
-    signId = None
     if args.provFile:
         provFile = Workspace.FullPath(args.provFile)
         if os.path.isfile(provFile):
             try:
                 argList = ['security', 'cms', '-D', '-i', provFile]
                 print(' '.join(argList))
-                provXml = subprocess.check_output(argList)
-                bundleId, signId, provId = Workspace.GetKeyValuesFromProvXml(provXml)
-                print('read from provision file: %s    %s    %s' %(bundleId, signId, provId))
+                provStr = subprocess.check_output(argList)
+                prov = plistlib.readPlistFromString(provStr)
+                provId = prov['UUID']
             except:
                 print('get key values from provision file failed: %s' %provFile)
                 sys.exit(1)
@@ -315,7 +290,8 @@ def PackageiOSCmd(args):
             sys.exit(1)
     elif args.provUuid:
         provId = args.provUuid
-        signId = args.signId
+    else:
+        provId = args.provName
     
     if not os.path.isdir(projPath):
         print('project directory not exist: %s' %projPath)
@@ -356,7 +332,6 @@ def PackageiOSCmd(args):
                '-target', buildTarget,
                '-configuration', buildType,
                'PROVISIONING_PROFILE=%s' %provId,
-               'CODE_SIGN_IDENTITY="%s"' %signId,
                'PRODUCT_NAME=%s' %productName,
                'DEPLOYMENT_POSTPROCESSING=YES',
                'STRIP_INSTALLED_PRODUCT=YES',
@@ -381,8 +356,8 @@ def PackageiOSCmd(args):
                'PackageApplication',
                '-v', buildOutFile,
                '-o', pkgOutFile
-               #'--sign', BuildArgs[K_CODE_SIGN_INFO][args.codesign][K_CODE_SIGN_ID],
-               #'--embed', '/Users/Shared/Jenkins/Downloads/xxx/xxx.mobileprovision'
+               #'--sign', signId,
+               #'--embed', provFile
                ]
     print(' '.join(argList))
     ret = subprocess.call(argList)
@@ -456,9 +431,9 @@ def ParseArgs(explicitArgs = None):
 
     par = packageSp.add_parser('ios', help = 'pacakge iOS project with xCode')
     group = par.add_mutually_exclusive_group(required = True)
-    group.add_argument('-provFile', help = 'path of the .mobileprovision file')
+    group.add_argument('-provName', help = 'name of the provision profile')
     group.add_argument('-provUuid', help = 'UUID of the provision profile')
-    par.add_argument('-signId', default = 'Automatic', help = 'code sign identity, Automatic by default')
+    group.add_argument('-provFile', help = 'path of the .mobileprovision file')
     par.add_argument('-proName', default = 'product', help = 'product name, product by default')
     par.add_argument('-outFile', help = 'package output file path')
     par.add_argument('-debug', action = 'store_true', help = 'build for Debug or Release')
