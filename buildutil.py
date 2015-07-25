@@ -291,7 +291,8 @@ def PackageiOSCmd(args):
     elif args.provUuid:
         provProfile = args.provUuid
     else:
-        provProfile = args.provName
+        print('provision uuid not found')
+        sys.exit(1)
     
     if not os.path.isdir(projPath):
         print('project directory not exist: %s' %projPath)
@@ -430,9 +431,8 @@ def ParseArgs(explicitArgs = None):
 
     par = packageSp.add_parser('ios', help = 'pacakge iOS project with xCode')
     group = par.add_mutually_exclusive_group(required = True)
-    group.add_argument('-provName', help = 'name of the provision profile')
-    group.add_argument('-provUuid', help = 'UUID of the provision profile')
     group.add_argument('-provFile', help = 'path of the .mobileprovision file')
+    group.add_argument('-provUuid', help = 'UUID of the provision profile')
     par.add_argument('-proName', default = 'product', help = 'product name, product by default')
     par.add_argument('-outFile', help = 'package output file path')
     par.add_argument('-debug', action = 'store_true', help = 'build for Debug or Release')
