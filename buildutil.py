@@ -436,7 +436,7 @@ def ParseArgs(explicitArgs = None):
     group.add_argument('-var', nargs = '+', help = 'works together with task name prefix and suffix, the same as task {prefix}{Variant}{Suffix}')
     par.add_argument('-pfx', help = 'task name prefix')
     par.add_argument('-sfx', help = 'task name suffix')
-    par.add_argument('-prop', nargs = '+', help = 'add gradle project property')
+    par.add_argument('-prop', nargs = '*', help = 'additional gradle project properties')
     par.add_argument('-ndp', action = 'store_true', help = '''does not add default properties.
     targetProjDir={projPath}, buildDir={projPath/build}, archivesBaseName={dirName(projPath)} by default.''')
     par.set_defaults(func = PackageAndroidCmd)
@@ -453,7 +453,7 @@ def ParseArgs(explicitArgs = None):
     par.add_argument('-keychain', nargs = 2, help = '''keychain path and passowrd.
     unlock keychain (usually ~/Library/Keychains/login.keychain) to workaround when "User Interaction Is Not Allowed".
     first time need click 'Always Allow' button on the system messagebox''')
-    par.add_argument('-opt', nargs = '+', help = '''additional build options.
+    par.add_argument('-opt', nargs = '*', help = '''additional build options.
     PRODUCT_NAME={proName} DEPLOYMENT_POSTPROCESSING=YES, STRIP_INSTALLED_PRODUCT=YES, SEPARATE_STRIP=YES, COPY_PHASE_STRIP=YES by default.
     check https://developer.apple.com/library/mac/documentation/DeveloperTools/Reference/XcodeBuildSettingRef for more information.''')
     par.set_defaults(func = PackageiOSCmd)
@@ -466,7 +466,7 @@ def ParseArgs(explicitArgs = None):
 
     delete = subparsers.add_parser('del', help = 'delete file or directory')
     delete.add_argument('src', help = 'path to delete')
-    delete.add_argument('-sfx', nargs = '+', help = 'also delete path (src + suffix), useful for unity .meta files')
+    delete.add_argument('-sfx', nargs = '*', help = 'also delete path (src + suffix), useful for unity .meta files')
     delete.set_defaults(func = DelCmd)
 
     return parser.parse_args(explicitArgs)
