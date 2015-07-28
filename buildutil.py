@@ -221,22 +221,32 @@ def PackageAndroidCmd(args):
     projPath = Workspace.FullPath(args.projPath)
     gradlePath = os.path.join(args.homePath, 'gradlew')
     buildFile = Workspace.FullPath(args.bf) if args.bf else os.path.join(projPath, 'build.gradle')
-    buildType = 'Debug' if args.debug else 'Release'
-    taskPrefix = args.task
+    taskPrefix = args.pfx if args.pfx else ''
+    taskSuffix = '%s%s' %(args.sfx[0].upper(), args.sfx[1:]) if args.sfx else ''
     argList = [os.path.join(gradlePath, 'gradlew.bat' if args.winOS else 'gradlew'), '-p', projPath, '-b', buildFile]
     if not args.ndp:
         argList.extend(['-P', 'targetProjDir=%s' %projPath,
                         '-P', 'buildDir=%s' %os.path.join(projPath, 'build'),
                         '-P', 'archivesBaseName=%s' %os.path.basename(projPath),])
     if args.prop:
-        for kv in args.prop:
+        for item in args.prop:
             argList.append('-P')
-            argList.append(kv)
-    if args.pf:
-        for flavor in args.pf:
-            argList.append('%s%s%s%s' %(taskPrefix, flavor[0].upper(), flavor[1:], buildType))
+            argList.append(item)
+    
+    if args.task:
+        argList.extend(args.task)
+    elif args.var:
+        if args.pfx == None:
+            if args.sfx == None:
+                print('execute task with variants but prefix and suffix are not found')
+            for var in args.var:
+                argList.append('%s%s%s' %(taskPrefix, var, taskSuffix))
+        else:
+            for var in args.var:
+                argList.append('%s%s%s%s' %(taskPrefix, var[0].upper(), var[1:], taskSuffix))
     else:
-        argList.append('%s%s' %(taskPrefix, buildType))
+        print('no task to execute')
+        sys.exit(1)
 
     if not os.path.isdir(projPath):
         print('project directory not exist: %s' %projPath)
@@ -248,7 +258,6 @@ def PackageAndroidCmd(args):
     print('===Packge Android===')
     print('projectPath:     %s' %projPath)
     print('buildFile:       %s' %buildFile)
-    print('buildType:       %s' %buildType)
     print('')
 
     try:
@@ -419,11 +428,14 @@ def ParseArgs(explicitArgs = None):
     package = subparsers.add_parser('package', help = 'package exported project, use gradle as Android build system')
     package.add_argument('projPath', help = 'target project path')
     packageSp = package.add_subparsers(help = 'package sub parsers')
+    
     par = packageSp.add_parser('android', help = 'pacakge android project with gralde')
     par.add_argument('-bf', help = 'specifies the build file')
-    par.add_argument('-pf', nargs = '+', help = 'specifies the gradle productFlavors')
-    par.add_argument('-task', choices = ['assemble', 'install', 'uninstall', 'lint', 'jar'], default = 'assemble', help = 'gradle task name prefix')
-    par.add_argument('-debug', action = 'store_true', help = 'build for Debug or Release')
+    group = par.add_mutually_exclusive_group(required = True)
+    group.add_argument('-task', nargs = '+', help = 'full task names to execute')
+    group.add_argument('-var', nargs = '+', help = 'works together with task name prefix and suffix, the same as task {prefix}{Variant}{Suffix}')
+    par.add_argument('-pfx', help = 'task name prefix')
+    par.add_argument('-sfx', help = 'task name suffix')
     par.add_argument('-prop', nargs = '+', help = 'add gradle project property')
     par.add_argument('-ndp', action = 'store_true', help = '''does not add default properties.
     targetProjDir={projPath}, buildDir={projPath/build}, archivesBaseName={dirName(projPath)} by default.''')
