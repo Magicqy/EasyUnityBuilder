@@ -292,7 +292,7 @@ def PackageiOSCmd(args):
                 prov = plistlib.readPlistFromString(provStr)
                 provProfile = prov['UUID']
                 if productName == None:
-                    productName = prov['application-identifier'].split('.')[-1]
+                    productName = prov['Entitlements']['application-identifier'].split('.')[-1]
             except:
                 print('get key values from provision file failed: %s' %provFile)
                 sys.exit(1)
