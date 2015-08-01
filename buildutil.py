@@ -291,18 +291,18 @@ def PackageiOSCmd(args):
                 provStr = subprocess.check_output(argList)
                 prov = plistlib.readPlistFromString(provStr)
                 provProfile = prov['UUID']
+                if productName == None:
+                    productName = prov['application-identifier'].split('.')[-1]
             except:
                 print('get key values from provision file failed: %s' %provFile)
                 sys.exit(1)
         else:
             print('provision file not exists: %s' %provFile)
             sys.exit(1)
-    elif args.provUuid:
-        provProfile = args.provUuid
-    else:
-        print('provision uuid not found')
-        sys.exit(1)
-    
+
+    if provProfile == None:
+        print('provision profile not found')
+        sys.exit(1)    
     if not os.path.isdir(projPath):
         print('project directory not exist: %s' %projPath)
         sys.exit(1)
@@ -430,29 +430,27 @@ def ParseArgs(explicitArgs = None):
     packageSp = package.add_subparsers(help = 'package sub parsers')
     
     par = packageSp.add_parser('android', help = 'pacakge android project with gralde')
-    par.add_argument('-bf', help = 'specifies the build file')
     group = par.add_mutually_exclusive_group(required = True)
     group.add_argument('-task', nargs = '+', help = 'full task names to execute')
     group.add_argument('-var', nargs = '+', help = 'works together with task name prefix and suffix, the same as task {prefix}{Variant}{Suffix}')
     par.add_argument('-pfx', help = 'task name prefix')
     par.add_argument('-sfx', help = 'task name suffix')
+    par.add_argument('-bf', help = 'specifies the build file')
     par.add_argument('-prop', nargs = '*', help = 'additional gradle project properties')
     par.add_argument('-ndp', action = 'store_true', help = '''does not add default properties.
     targetProjDir={projPath}, buildDir={projPath/build}, archivesBaseName={dirName(projPath)} by default.''')
     par.set_defaults(func = PackageAndroidCmd)
 
     par = packageSp.add_parser('ios', help = 'pacakge iOS project with xCode')
-    group = par.add_mutually_exclusive_group(required = True)
-    group.add_argument('-provFile', help = 'path of the .mobileprovision file')
-    group.add_argument('-provUuid', help = 'UUID of the provision profile')
-    par.add_argument('-proName', default = 'product', help = 'product name, product by default')
+    par.add_argument('-provFile', help = 'path of the .mobileprovision file', required = True)
+    par.add_argument('-proName', help = 'specifies the product name')
     par.add_argument('-outFile', help = 'package output file path')
     par.add_argument('-debug', action = 'store_true', help = 'build for Debug or Release')
     par.add_argument('-target', default = 'Unity-iPhone', help = 'build target, Unity-iPhone by default')
     par.add_argument('-sdk', default = 'iphoneos', help = 'build sdk version, latest iphoneos by default')
     par.add_argument('-keychain', nargs = 2, help = '''keychain path and passowrd.
-    unlock keychain (usually ~/Library/Keychains/login.keychain) to workaround when "User Interaction Is Not Allowed".
-    first time need click 'Always Allow' button on the system messagebox''')
+    unlock keychain (usually ~/Library/Keychains/login.keychain) to workaround for "User Interaction Is Not Allowed".
+    click 'Always Allow' button at first time it ask for keychain access''')
     par.add_argument('-opt', nargs = '*', help = '''additional build options.
     PRODUCT_NAME={proName} DEPLOYMENT_POSTPROCESSING=YES, STRIP_INSTALLED_PRODUCT=YES, SEPARATE_STRIP=YES, COPY_PHASE_STRIP=YES by default.
     check https://developer.apple.com/library/mac/documentation/DeveloperTools/Reference/XcodeBuildSettingRef for more information.''')
