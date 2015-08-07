@@ -413,17 +413,20 @@ def ParseArgs(explicitArgs = None):
     subparsers = parser.add_subparsers(help = 'sub-command list')
     build = subparsers.add_parser('build', help='build player for unity project')
     build.add_argument('projPath', help = 'target unity project path')
-    build.add_argument('buildTarget', choices = ['android', 'ios', 'win', 'win64', 'osx', 'osx64'], help = 'build target type')
+    build.add_argument('buildTarget', choices = ['android', 'ios', 'win', 'win64', 'osx', 'osx64'],
+                       help = 'build target type')
     build.add_argument('outPath', help = 'build output path')
     build.add_argument('-opt', help = 'build options, see UnityEditor.BuildOptions for detail')
     build.add_argument('-exp', action = 'store_true', help = 'export project but not build it (android and ios only)')
     build.add_argument('-dev', action = 'store_true', help = 'development version, with debug symbols and enable profiler')
-    build.add_argument('-aph', default = False, action = 'store_false', help = 'keep android project hierarchy as outPath/{productName}/ instead of outPath/')
+    build.add_argument('-aph', default = False, action = 'store_false',
+                       help = 'keep android project hierarchy as outPath/{productName}/ instead of outPath/')
     build.set_defaults(func = BuildCmd)
 
     invoke = subparsers.add_parser('invoke', help = 'invoke method with arguments')
     invoke.add_argument('projPath', help = 'target unity project path')
-    invoke.add_argument('methodName', help = 'method name to invoke, [Assembly:(Optional)]Namespace.SubNamespace.Class+NestedClass.Method')
+    invoke.add_argument('methodName',
+                        help = 'method name to invoke, [Assembly:(Optional)]Namespace.SubNamespace.Class+NestedClass.Method')
     invoke.add_argument('args', nargs = '*', help = 'method arguments, support types: primitive / string / enum')
     invoke.add_argument('-next', action = 'append', nargs = '+', help = 'next method and arguments to invoke')
     invoke.set_defaults(func = InvokeCmd)
@@ -435,13 +438,15 @@ def ParseArgs(explicitArgs = None):
     par = packageSp.add_parser('android', help = 'pacakge android project with gralde')
     group = par.add_mutually_exclusive_group(required = True)
     group.add_argument('-task', nargs = '+', help = 'full task names to execute')
-    group.add_argument('-var', nargs = '+', help = 'works together with task name prefix and suffix, the same as task {prefix}{Variant}{Suffix}')
+    group.add_argument('-var', nargs = '+',
+                       help = 'works together with task name prefix and suffix, the same as task {prefix}{Variant}{Suffix}')
     par.add_argument('-pfx', help = 'task name prefix')
     par.add_argument('-sfx', help = 'task name suffix')
     par.add_argument('-bf', help = 'specifies the build file')
     par.add_argument('-prop', nargs = '*', help = 'additional gradle project properties')
-    par.add_argument('-ndp', action = 'store_true', help = '''does not add default properties.
-    targetProjDir={projPath}, buildDir={projPath/build}, archivesBaseName={dirName(projPath)} by default.''')
+    par.add_argument('-ndp', action = 'store_true',
+                     help = '''does not add default properties.
+                     targetProjDir={projPath}, buildDir={projPath/build}, archivesBaseName={dirName(projPath)} by default.''')
     par.set_defaults(func = PackageAndroidCmd)
 
     par = packageSp.add_parser('ios', help = 'pacakge iOS project with xCode')
@@ -451,12 +456,14 @@ def ParseArgs(explicitArgs = None):
     par.add_argument('-debug', action = 'store_true', help = 'build for Debug or Release')
     par.add_argument('-target', default = 'Unity-iPhone', help = 'build target, Unity-iPhone by default')
     par.add_argument('-sdk', default = 'iphoneos', help = 'build sdk version, latest iphoneos by default')
-    par.add_argument('-keychain', nargs = 2, help = '''keychain path and passowrd.
-    unlock keychain (usually ~/Library/Keychains/login.keychain) to workaround for "User Interaction Is Not Allowed".
-    click 'Always Allow' button at first time it ask for keychain access''')
-    par.add_argument('-opt', nargs = '*', help = '''additional build options.
-    PRODUCT_NAME={proName} DEPLOYMENT_POSTPROCESSING=YES, STRIP_INSTALLED_PRODUCT=YES, SEPARATE_STRIP=YES, COPY_PHASE_STRIP=YES by default.
-    check https://developer.apple.com/library/mac/documentation/DeveloperTools/Reference/XcodeBuildSettingRef for more information.''')
+    par.add_argument('-keychain', nargs = 2,
+                     help = '''keychain path and passowrd.
+                     unlock keychain (usually ~/Library/Keychains/login.keychain) to workaround for "User Interaction Is Not Allowed".
+                     click 'Always Allow' button at first time it ask for keychain access''')
+    par.add_argument('-opt', nargs = '*',
+                     help = '''additional build options.
+                     PRODUCT_NAME={proName} DEPLOYMENT_POSTPROCESSING=YES, STRIP_INSTALLED_PRODUCT=YES, SEPARATE_STRIP=YES, COPY_PHASE_STRIP=YES by default.
+                     check https://developer.apple.com/library/mac/documentation/DeveloperTools/Reference/XcodeBuildSettingRef for more information.''')
     par.set_defaults(func = PackageiOSCmd)
 
     copy = subparsers.add_parser('copy', help = 'copy file or directory')
