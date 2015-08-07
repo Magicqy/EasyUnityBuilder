@@ -78,34 +78,36 @@ def Cleanup(projPath):
     Del(os.path.join(projPath, 'Assets/Editor/_BuildUtility_'), ['.meta'])
     pass
 
-def Copy(src, dst, stat = False):
+def Copy(src, dst, append = False, stat = False):
     if src == dst or src == None or not os.path.exists(src):
         print('copy failed, %s >> %s' %(src, dst))
         sys.exit(1)
 
     if os.path.isdir(src):
         #src and dst are dirs
-        if os.path.isfile(dst):
-            os.remove(dst)
-        if not os.path.exists(dst):
+        if os.path.exists(dst):
+            if os.path.isfile(dst):
+                os.remove(dst)
+            elif os.path.isdir(dst):
+                if not append:
+                    shutil.rmtree(dst)
+                    os.makedirs(dst)
+        else:
             os.makedirs(dst)
         
         for item in os.listdir(src):
             srcPath = os.path.join(src, item)
             dstPath = os.path.join(dst, item)
-            if os.path.isfile(srcPath):
-                shutil.copyfile(srcPath, dstPath)
-                if stat:
-                    shutil.copystat(srcPath, dstPath)
-            elif os.path.isdir(srcPath):
-                Copy(srcPath, dstPath, stat)
-            else:
-                print('path is not a file or directory: %s' %srcPath)
+            Copy(srcPath, dstPath, append, stat)
     elif os.path.isfile(src):
         #src and dst are files
-        dstDir = os.path.dirname(dst)
-        if not os.path.exists(dstDir):
-            os.makedirs(dstDir)
+        if os.path.exists(dst):
+            Del(dst)
+        else:
+            dstDir = os.path.dirname(dst)
+            if not os.path.exists(dstDir):
+                os.makedirs(dstDir)
+
         shutil.copyfile(src, dst)
         if stat:
             shutil.copystat(src, dst)
@@ -202,7 +204,7 @@ def BuildCmd(args):
         for dir in os.listdir(outPath):
             expDir = os.path.join(outPath, dir)
             if os.path.isdir(expDir):
-                Copy(expDir, outPath)
+                Copy(expDir, outPath, True)
                 Del(expDir)
                 break
     pass
@@ -382,9 +384,10 @@ def CopyCmd(args):
     print('===Copy===')
     print('src:     %s' %src)
     print('dst:     %s' %dst)
+    print('append:  %s' %args.append)
     print('stat:    %s' %args.stat)
 
-    Copy(src, dst, args.stat)
+    Copy(src, dst, args.append, args.stat)
     pass
 
 def DelCmd(args):
@@ -459,7 +462,10 @@ def ParseArgs(explicitArgs = None):
     copy = subparsers.add_parser('copy', help = 'copy file or directory')
     copy.add_argument('src', help = 'path to copy from')
     copy.add_argument('dst', help = 'path to copy to')
-    copy.add_argument('-stat', default = False, action = 'store_true', help = 'copy the permission bits, last access time, last modification time, and flags')
+    copy.add_argument('-append', default = False, action = 'store_true',
+                      help = 'append files from src to dst instead of delete dst before copy, only take effect when copy directory.')
+    copy.add_argument('-stat', default = False, action = 'store_true',
+                      help = 'copy the permission bits, last access time, last modification time, and flags')
     copy.set_defaults(func = CopyCmd)
 
     delete = subparsers.add_parser('del', help = 'delete file or directory')
