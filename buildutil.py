@@ -361,6 +361,9 @@ def PackageiOSCmd(args):
     if not os.path.exists(buildOutFile):
         print('build output file not exist: %s' %buildOutFile)
         sys.exit(1)
+    pkgFileDir = os.path.dirname(pkgOutFile)
+    if not os.path.exists(pkgFileDir):
+        os.makedirs(pkgFileDir)
 
     argList = ['/usr/bin/xcrun',
                '-sdk', buildSdk,
