@@ -192,7 +192,7 @@ def BuildCmd(args):
     ret = ivk.Invoke(projPath, args.homePath, args.unityExe, args.logFile, not args.nobatch, not args.noquit)
     
     #place exported project in outPath/ instead of outPath/productName/
-    if ret == 0 and buildTarget == BuildTarget.Android and BuildOptions.AcceptExternalModifications(buildOpts) and not args.aph:
+    if ret == 0 and buildTarget == BuildTarget.Android and BuildOptions.AcceptExternalModifications(buildOpts) and not args.dph:
         for dir in os.listdir(outPath):
             expDir = os.path.join(outPath, dir)
             if os.path.isdir(expDir):
@@ -415,9 +415,9 @@ def ParseArgs(explicitArgs = None):
     build.add_argument('outPath', help = 'build output path')
     build.add_argument('-opt', help = 'build options, see UnityEditor.BuildOptions for detail')
     build.add_argument('-exp', action = 'store_true', help = 'export project but not build it (android and ios only)')
-    build.add_argument('-dev', action = 'store_true', help = 'development version, with debug symbols and enable profiler')
-    build.add_argument('-aph', default = False, action = 'store_false',
-                       help = 'keep android project hierarchy as outPath/{productName}/ instead of outPath/')
+    build.add_argument('-dev', action = 'store_true', help = 'enable unity development build, with debug symbols and internal profiler')
+    build.add_argument('-dph', action = 'store_true',
+                       help = 'unity export android project to outPath/{productName}/{exportProj} by default, without this option, project will be export to outPath/{exportProj}')
     build.set_defaults(func = BuildCmd)
 
     invoke = subparsers.add_parser('invoke', help = 'invoke method with arguments')
