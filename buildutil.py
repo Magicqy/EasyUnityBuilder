@@ -434,40 +434,38 @@ def ParseArgs(explicitArgs = None):
     invoke.add_argument('-next', action = 'append', nargs = '+', help = 'next method and arguments to invoke')
     invoke.set_defaults(func = InvokeCmd)
 
-    package = subparsers.add_parser('package', help = 'package exported project, use gradle as Android build system')
-    package.add_argument('projPath', help = 'target project path')
-    packageSp = package.add_subparsers(help = 'package sub parsers')
-    
-    par = packageSp.add_parser('android', help = 'pacakge android project with gralde')
-    group = par.add_mutually_exclusive_group(required = True)
+    packandroid = subparsers.add_parser('packandroid', help = 'pacakge android project with gralde')
+    packandroid.add_argument('projPath', help = 'target project path')
+    packandroid.add_argument('-bf', help = 'specifies the build file', required = True)
+    group = packandroid.add_mutually_exclusive_group(required = True)
     group.add_argument('-task', nargs = '+', help = 'full task names to execute')
     group.add_argument('-var', nargs = '+',
                        help = 'works together with task name prefix and suffix, the same as task {prefix}{Variant}{Suffix}')
-    par.add_argument('-pfx', help = 'task name prefix')
-    par.add_argument('-sfx', help = 'task name suffix')
-    par.add_argument('-bf', help = 'specifies the build file')
-    par.add_argument('-prop', nargs = '*', help = 'additional gradle project properties')
-    par.add_argument('-ndp', action = 'store_true',
+    packandroid.add_argument('-pfx', help = 'task name prefix')
+    packandroid.add_argument('-sfx', help = 'task name suffix')
+    packandroid.add_argument('-prop', nargs = '*', help = 'additional gradle project properties')
+    packandroid.add_argument('-ndp', action = 'store_true',
                      help = '''does not add default properties.
                      targetProjDir={projPath}, buildDir={projPath/build}, archivesBaseName={dirName(projPath)} by default.''')
-    par.set_defaults(func = PackageAndroidCmd)
+    packandroid.set_defaults(func = PackageAndroidCmd)
 
-    par = packageSp.add_parser('ios', help = 'pacakge iOS project with xCode')
-    par.add_argument('-provFile', help = 'path of the .mobileprovision file', required = True)
-    par.add_argument('-proName', help = 'specifies the product name')
-    par.add_argument('-outFile', help = 'package output file path')
-    par.add_argument('-debug', action = 'store_true', help = 'build for Debug or Release')
-    par.add_argument('-target', default = 'Unity-iPhone', help = 'build target, Unity-iPhone by default')
-    par.add_argument('-sdk', default = 'iphoneos', help = 'build sdk version, latest iphoneos by default')
-    par.add_argument('-keychain', nargs = 2,
+    packios = subparsers.add_parser('packios', help = 'pacakge iOS project with xCode')
+    packios.add_argument('projPath', help = 'target project path')
+    packios.add_argument('-provFile', help = 'path of the .mobileprovision file', required = True)
+    packios.add_argument('-outFile', help = 'package output file path', required = True)
+    packios.add_argument('-proName', help = 'specifies the product name')
+    packios.add_argument('-debug', action = 'store_true', help = 'build for Debug or Release')
+    packios.add_argument('-target', default = 'Unity-iPhone', help = 'build target, Unity-iPhone by default')
+    packios.add_argument('-sdk', default = 'iphoneos', help = 'build sdk version, latest iphoneos by default')
+    packios.add_argument('-keychain', nargs = 2,
                      help = '''keychain path and passowrd.
                      unlock keychain (usually ~/Library/Keychains/login.keychain) to workaround for "User Interaction Is Not Allowed".
                      click 'Always Allow' button at first time it ask for keychain access''')
-    par.add_argument('-opt', nargs = '*',
+    packios.add_argument('-opt', nargs = '*',
                      help = '''additional build options.
                      PRODUCT_NAME={proName} DEPLOYMENT_POSTPROCESSING=YES, STRIP_INSTALLED_PRODUCT=YES, SEPARATE_STRIP=YES, COPY_PHASE_STRIP=YES by default.
                      check https://developer.apple.com/library/mac/documentation/DeveloperTools/Reference/XcodeBuildSettingRef for more information.''')
-    par.set_defaults(func = PackageiOSCmd)
+    packios.set_defaults(func = PackageiOSCmd)
 
     copy = subparsers.add_parser('copy', help = 'copy file or directory')
     copy.add_argument('src', help = 'path to copy from')
