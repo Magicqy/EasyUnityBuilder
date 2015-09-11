@@ -41,14 +41,6 @@ class BuildOptions:
         return buildOpts.find(BuildOptions.AcceptExternalModificationsToPlayer) >= 0
     pass
 
-class GradleTask:
-    Assemble = 'assemble'
-    Install = 'install'
-    UnInstall = 'uninstall'
-    Lint = 'lint'
-    Jar = 'jar'
-    pass
-
 class Workspace:
     @staticmethod
     def FullPath(path):
@@ -225,11 +217,12 @@ def PackageAndroidCmd(args):
     buildFile = Workspace.FullPath(args.bf) if args.bf else os.path.join(projPath, 'build.gradle')
     taskPrefix = args.pfx if args.pfx else ''
     taskSuffix = '%s%s' %(args.sfx[0].upper(), args.sfx[1:]) if args.sfx else ''
+
     argList = [os.path.join(gradlePath, 'gradlew.bat' if args.winOS else 'gradlew'), '-p', projPath, '-b', buildFile]
     if not args.ndp:
         argList.extend(['-P', 'targetProjDir=%s' %projPath,
                         '-P', 'buildDir=%s' %os.path.join(projPath, 'build'),
-                        '-P', 'archivesBaseName=%s' %os.path.basename(projPath),])
+                        '-P', 'archivesBaseName=%s' %os.path.basename(projPath)])
     if args.prop:
         for item in args.prop:
             argList.append('-P')
@@ -343,11 +336,12 @@ def PackageiOSCmd(args):
                '-target', buildTarget,
                '-configuration', buildType,
                'PROVISIONING_PROFILE=%s' %provProfile,
-               'PRODUCT_NAME=%s' %productName,
-               'DEPLOYMENT_POSTPROCESSING=YES',
-               'STRIP_INSTALLED_PRODUCT=YES',
-               'SEPARATE_STRIP=YES',
-               'COPY_PHASE_STRIP=YES']
+               'PRODUCT_NAME=%s' %productName]
+    if not args.ndo:
+        argList.extend(['DEPLOYMENT_POSTPROCESSING=YES',
+                        'STRIP_INSTALLED_PRODUCT=YES',
+                        'SEPARATE_STRIP=YES',
+                        'COPY_PHASE_STRIP=YES'])
     if args.opt:
         argList.extend(args.opt)
     print(' '.join(argList))
@@ -443,10 +437,10 @@ def ParseArgs(explicitArgs = None):
                        help = 'works together with task name prefix and suffix, the same as task {prefix}{Variant}{Suffix}')
     packandroid.add_argument('-pfx', help = 'task name prefix')
     packandroid.add_argument('-sfx', help = 'task name suffix')
-    packandroid.add_argument('-prop', nargs = '*', help = 'additional gradle project properties')
-    packandroid.add_argument('-ndp', action = 'store_true',
-                     help = '''does not add default properties.
-                     targetProjDir={projPath}, buildDir={projPath/build}, archivesBaseName={dirName(projPath)} by default.''')
+    packandroid.add_argument('-prop', nargs = '*',
+                             help = '''additional gradle build properties,
+                             targetProjDir={projPath}, buildDir={projPath/build}, archivesBaseName={dirName(projPath)} by default''')
+    packandroid.add_argument('-ndp', action = 'store_true', help = 'does not add default build properties')
     packandroid.set_defaults(func = PackageAndroidCmd)
 
     packios = subparsers.add_parser('packios', help = 'pacakge iOS project with xCode')
@@ -464,14 +458,15 @@ def ParseArgs(explicitArgs = None):
     packios.add_argument('-opt', nargs = '*',
                      help = '''additional build options.
                      PRODUCT_NAME={proName} DEPLOYMENT_POSTPROCESSING=YES, STRIP_INSTALLED_PRODUCT=YES, SEPARATE_STRIP=YES, COPY_PHASE_STRIP=YES by default.
-                     check https://developer.apple.com/library/mac/documentation/DeveloperTools/Reference/XcodeBuildSettingRef for more information.''')
+                     check https://developer.apple.com/library/mac/documentation/DeveloperTools/Reference/XcodeBuildSettingRef for more information''')
+    packios.add_argument('-ndo', action = 'store_true', help = 'does not add default build options')
     packios.set_defaults(func = PackageiOSCmd)
 
     copy = subparsers.add_parser('copy', help = 'copy file or directory')
     copy.add_argument('src', help = 'path to copy from')
     copy.add_argument('dst', help = 'path to copy to')
     copy.add_argument('-append', default = False, action = 'store_true',
-                      help = 'append files from src to dst instead of delete dst before copy, only take effect when copy directory.')
+                      help = 'append files from src to dst instead of delete dst before copy, only take effect when copy directory')
     copy.add_argument('-stat', default = False, action = 'store_true',
                       help = 'copy the permission bits, last access time, last modification time, and flags')
     copy.set_defaults(func = CopyCmd)
@@ -491,7 +486,7 @@ def Run(args):
     if args.unity == None:
         args.unity = os.environ.get('UNITY_HOME')
     args.unity = Workspace.FullPath(args.unity)
-
+    #unity executable
     if sys.platform.startswith('win32'):
         args.winOS = True
         args.unityExe = os.path.join(args.unity, 'Unity.exe')
