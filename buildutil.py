@@ -41,7 +41,14 @@ class BuildOptions:
         return buildOpts.find(BuildOptions.AcceptExternalModificationsToPlayer) >= 0
     pass
 
-class Workspace:
+class Utility:
+    @staticmethod
+    def Log(msg, exitWithCode = None):
+        print(msg)
+        if exitWithCode != None:
+            sys.exit(exitWithCode)
+        pass
+
     @staticmethod
     def FullPath(path):
         return os.path.abspath(os.path.expanduser(path)) if path else ''
@@ -57,7 +64,7 @@ class Workspace:
     @staticmethod
     def CorrectExt(outPath, buildTarget, buildOpts):
         root, ext = os.path.splitext(outPath)
-        return root + Workspace.extSwitch[buildTarget](ext, buildOpts.find(BuildOptions.AcceptExternalModificationsToPlayer) < 0)
+        return root + Utility.extSwitch[buildTarget](ext, buildOpts.find(BuildOptions.AcceptExternalModificationsToPlayer) < 0)
     pass
 
 #util methods
@@ -72,8 +79,7 @@ def Cleanup(projPath):
 
 def Copy(src, dst, append = False, stat = False):
     if src == dst or src == None or not os.path.exists(src):
-        print('copy failed, %s >> %s' %(src, dst))
-        sys.exit(1)
+        Utility.Log('copy failed, %s >> %s' %(src, dst), 1)
 
     if os.path.isdir(src):
         #src and dst are dirs
@@ -104,7 +110,7 @@ def Copy(src, dst, append = False, stat = False):
         if stat:
             shutil.copystat(src, dst)
     else:
-        print('path is not a file or directory: %s' %src)
+        Utility.Log('path is not a file or directory: %s' %src)
     pass
 
 def Del(path, alsoDelSuffixes = None):
@@ -113,7 +119,7 @@ def Del(path, alsoDelSuffixes = None):
     elif os.path.isdir(path):
         shutil.rmtree(path)
     elif os.path.exists(path):
-        print('path is not a file or directory: %s' %path)
+        Utility.Log('path is not a file or directory: %s' %path)
 
     if alsoDelSuffixes:
         for suffix in alsoDelSuffixes:
@@ -140,44 +146,43 @@ class Invoker:
             argList.append('-quit')
         argList.extend(self.argList)
 
-        print('===Invoke===')
-        print('unityPath:       %s' %unityExe)
-        print('projectPath:     %s' %projPath)
-        print('logFilePath:     %s' %logFilePath)
-        print('batchmode:       %s' %batch)
-        print('quit:            %s' %quit)
-        print('')
+        Utility.Log('===Invoke===')
+        Utility.Log('unityPath:       %s' %unityExe)
+        Utility.Log('projectPath:     %s' %projPath)
+        Utility.Log('logFilePath:     %s' %logFilePath)
+        Utility.Log('batchmode:       %s' %batch)
+        Utility.Log('quit:            %s' %quit)
+        Utility.Log('')
         for i in range(2, len(self.argList)):
             arg = self.argList[i]
             if isinstance(arg, list):
                 arg = '%s' %' '.join(arg)
             if arg.startswith('-'):
-                print('')
+                Utility.Log('')
             else:
-                print(arg),
-        print('')
+                Utility.Log(arg),
+        Utility.Log('')
         
         if os.path.isdir(projPath):
             try:
                 Setup(projPath, homePath)
-                print('')
-                print(' '.join(argList))
+                Utility.Log('')
+                Utility.Log(' '.join(argList))
                 ret = subprocess.call(argList)
                 if ret != 0:
-                    print('execute fail with retcode: %s' %ret)
-                    sys.exit(ret)
+                    Utility.Log('execute fail with retcode: %s' %ret, ret)
                 return ret
             finally:
                 Cleanup(projPath)
         else:
-            print('projectPath not exist: %s' %projPath)
+            Utility.Log('projectPath not exist: %s' %projPath)
     pass
 
 def BuildCmd(args):
-    projPath = Workspace.FullPath(args.projPath)
+    projPath = Utility.FullPath(args.projPath)
     buildTarget = BuildTarget.From(args.buildTarget)
     buildOpts = BuildOptions.From(args.opt, args.exp, args.dev)
-    outPath = Workspace.CorrectExt(Workspace.FullPath(args.outPath), buildTarget, buildOpts)
+    outPath = Utility.CorrectExt(Utility.FullPath(args.outPath), buildTarget, buildOpts)
 
     #cleanup
     Del(outPath)
@@ -202,7 +207,7 @@ def BuildCmd(args):
     pass
 
 def InvokeCmd(args):
-    projPath = Workspace.FullPath(args.projPath)
+    projPath = Utility.FullPath(args.projPath)
     
     ivk = Invoker(args.methodName, args.args)
     if args.next:
@@ -212,9 +217,9 @@ def InvokeCmd(args):
     pass
 
 def PackageAndroidCmd(args):
-    projPath = Workspace.FullPath(args.projPath)
+    projPath = Utility.FullPath(args.projPath)
     gradlePath = os.path.join(args.homePath, 'gradlew')
-    buildFile = Workspace.FullPath(args.bf) if args.bf else os.path.join(projPath, 'build.gradle')
+    buildFile = Utility.FullPath(args.bf) if args.bf else os.path.join(projPath, 'build.gradle')
     taskPrefix = args.pfx if args.pfx else ''
     taskSuffix = '%s%s' %(args.sfx[0].upper(), args.sfx[1:]) if args.sfx else ''
 
@@ -233,102 +238,92 @@ def PackageAndroidCmd(args):
     elif args.var:
         if args.pfx == None:
             if args.sfx == None:
-                print('execute task with variants but prefix and suffix are not found')
+                Utility.Log('execute task with variants but prefix and suffix are not found')
             for var in args.var:
                 argList.append('%s%s%s' %(taskPrefix, var, taskSuffix))
         else:
             for var in args.var:
                 argList.append('%s%s%s%s' %(taskPrefix, var[0].upper(), var[1:], taskSuffix))
     else:
-        print('no task to execute')
-        sys.exit(1)
+        Utility.Log('no task to execute', 1)
 
     if not os.path.isdir(projPath):
-        print('project directory not exist: %s' %projPath)
-        sys.exit(1)
+        Utility.Log('project directory not exist: %s' %projPath, 1)
     if not os.path.isfile(buildFile):
-        print('build.gradle file not exist: %s' %buildFile)
-        sys.exit(1)
+        Utility.Log('build.gradle file not exist: %s' %buildFile, 1)
 
-    print('===Packge Android===')
-    print('projectPath:     %s' %projPath)
-    print('buildFile:       %s' %buildFile)
-    print('')
+    Utility.Log('===Packge Android===')
+    Utility.Log('projectPath:     %s' %projPath)
+    Utility.Log('buildFile:       %s' %buildFile)
+    Utility.Log('')
 
     try:
-        print(' '.join(argList))
+        Utility.Log(' '.join(argList))
         ret = subprocess.call(argList)
         if ret != 0:
-            print('execute gradle task failed with retcode: %s' %ret)
-            sys.exit(ret)
+            Utility.Log('execute gradle task failed with retcode: %s' %ret, ret)
     except:
-        print('package failed with excpetion')
+        Utility.Log('package failed with excpetion')
     pass
 
 def PackageiOSCmd(args):
     if args.winOS != False:
-        print('package iOS only support on MacOS')
-        sys.exit(1)
+        Utility.Log('package iOS only support on MacOS', 1)
 
-    projPath = Workspace.FullPath(args.projPath)
+    projPath = Utility.FullPath(args.projPath)
     buildType = 'Debug' if args.debug else 'Release'
     buildTarget = args.target
     buildSdk = str(args.sdk).lower()
-    pkgOutFile = Workspace.FullPath(args.outFile) if args.outFile else projPath + '.ipa'
+    pkgOutFile = Utility.FullPath(args.outFile) if args.outFile else projPath + '.ipa'
     productName = args.proName
     provProfile = None
     if args.provFile:
-        provFile = Workspace.FullPath(args.provFile)
+        provFile = Utility.FullPath(args.provFile)
         if os.path.isfile(provFile):
             try:
                 argList = ['security', 'cms', '-D', '-i', provFile]
-                print(' '.join(argList))
+                Utility.Log(' '.join(argList))
                 provStr = subprocess.check_output(argList)
                 prov = plistlib.readPlistFromString(provStr)
                 provProfile = prov['UUID']
                 if productName == None:
                     productName = prov['Entitlements']['application-identifier'].split('.')[-1]
             except:
-                print('get key values from provision file failed: %s' %provFile)
-                sys.exit(1)
+                Utility.Log('get key values from provision file failed: %s' %provFile, 1)
         else:
-            print('provision file not exists: %s' %provFile)
-            sys.exit(1)
+            Utility.Log('provision file not exists: %s' %provFile, 1)
 
     if provProfile == None:
-        print('provision profile not found')
-        sys.exit(1)    
+        Utility.Log('provision profile not found', 1)
     if not os.path.isdir(projPath):
-        print('project directory not exist: %s' %projPath)
-        sys.exit(1)
+        Utility.Log('project directory not exist: %s' %projPath, 1)
 
-    print('===Package iOS===')
-    print('projectPath:     %s' %projPath)
-    print('buildType:       %s' %buildType)
-    print('buildTarget:     %s' %buildTarget)
-    print('buildSdk:        %s' %buildSdk)
-    print('provision:       %s' %provProfile)
-    print('productName:     %s' %productName)
-    print('pkgOutFile:      %s' %pkgOutFile)
-    print('')
+    Utility.Log('===Package iOS===')
+    Utility.Log('projectPath:     %s' %projPath)
+    Utility.Log('buildType:       %s' %buildType)
+    Utility.Log('buildTarget:     %s' %buildTarget)
+    Utility.Log('buildSdk:        %s' %buildSdk)
+    Utility.Log('provision:       %s' %provProfile)
+    Utility.Log('productName:     %s' %productName)
+    Utility.Log('pkgOutFile:      %s' %pkgOutFile)
+    Utility.Log('')
     #try resolve the 'User Interaction Is Not Allowed' problem when run from shell
     if args.keychain:
-        argList = ['security', 'unlock-keychain', '-p', args.keychain[1], Workspace.FullPath(args.keychain[0])]
-        print(' '.join(argList))
+        argList = ['security', 'unlock-keychain', '-p', args.keychain[1], Utility.FullPath(args.keychain[0])]
+        Utility.Log(' '.join(argList))
         ret = subprocess.call(argList)
         if ret != 0:
-            print('unlock keychain failed with retcode: %s' %ret)
+            Utility.Log('unlock keychain failed with retcode: %s' %ret)
 
     argList = ['xcodebuild',
                '-project', os.path.join(projPath, '%s.xcodeproj' %buildTarget),
                'clean',
                '-target', buildTarget,
                '-configuration', buildType]
-    print(' '.join(argList))
+    Utility.Log(' '.join(argList))
     ret = subprocess.call(argList)
     if ret != 0:
-        print('execute clean failed with retcode: %s' %ret)
-        sys.exit(ret)
+        Utility.Log('execute clean failed with retcode: %s' %ret, ret)
 
     argList = ['xcodebuild',
                '-project', os.path.join(projPath, '%s.xcodeproj' %buildTarget),
@@ -344,17 +339,15 @@ def PackageiOSCmd(args):
                         'COPY_PHASE_STRIP=YES'])
     if args.opt:
         argList.extend(args.opt)
-    print(' '.join(argList))
+    Utility.Log(' '.join(argList))
     ret = subprocess.call(argList)
     if ret != 0:
-        print('execute xcodebuild failed with retcode: %s' %ret)
-        sys.exit(ret)
+        Utility.Log('execute xcodebuild failed with retcode: %s' %ret, ret)
     
     #how to get archiveBaseName or bundle identifier?
     buildOutFile = os.path.join(projPath, 'build/%s-iphoneos/%s.app' %(buildType, productName))
     if not os.path.exists(buildOutFile):
-        print('build output file not exist: %s' %buildOutFile)
-        sys.exit(1)
+        Utility.Log('build output file not exist: %s' %buildOutFile, 1)
     pkgFileDir = os.path.dirname(pkgOutFile)
     if not os.path.exists(pkgFileDir):
         os.makedirs(pkgFileDir)
@@ -367,34 +360,33 @@ def PackageiOSCmd(args):
                #'--sign', signId,
                #'--embed', provFile
                ]
-    print(' '.join(argList))
+    Utility.Log(' '.join(argList))
     ret = subprocess.call(argList)
     if ret != 0:
-        print('execute xcrun failed with retcode: %s' %ret)
-        sys.exit(ret)
+        Utility.Log('execute xcrun failed with retcode: %s' %ret, ret)
     pass
 
 def CopyCmd(args):
-    src = Workspace.FullPath(args.src)
-    dst = Workspace.FullPath(args.dst)
+    src = Utility.FullPath(args.src)
+    dst = Utility.FullPath(args.dst)
 
-    print('===Copy===')
-    print('src:     %s' %src)
-    print('dst:     %s' %dst)
-    print('append:  %s' %args.append)
-    print('stat:    %s' %args.stat)
+    Utility.Log('===Copy===')
+    Utility.Log('src:     %s' %src)
+    Utility.Log('dst:     %s' %dst)
+    Utility.Log('append:  %s' %args.append)
+    Utility.Log('stat:    %s' %args.stat)
 
     Copy(src, dst, args.append, args.stat)
     pass
 
 def DelCmd(args):
-    path = Workspace.FullPath(args.src)
+    path = Utility.FullPath(args.src)
 
-    print('===Delete===')
-    print('path:    %s' %path)
+    Utility.Log('===Delete===')
+    Utility.Log('path:    %s' %path)
     if args.sfx:
         for suffix in args.sfx:
-            print('path:    %s%s' %(path, suffix))
+            Utility.Log('path:    %s%s' %(path, suffix))
     
     Del(path, args.sfx)
     pass
@@ -485,7 +477,7 @@ def Run(args):
     #unity home
     if args.unity == None:
         args.unity = os.environ.get('UNITY_HOME')
-    args.unity = Workspace.FullPath(args.unity)
+    args.unity = Utility.FullPath(args.unity)
     #unity executable
     if sys.platform.startswith('win32'):
         args.winOS = True
@@ -494,30 +486,29 @@ def Run(args):
         args.winOS = False
         args.unityExe = os.path.join(args.unity, 'Unity.app/Contents/MacOS/Unity')
     else:
-        print('Unsupported platform: %s' %sys.platform)
-        sys.exit(1)
+        Utility.Log('Unsupported platform: %s' %sys.platform, 1)
 
     if not os.path.exists(args.unity):
-        print('Unity home path not found, use -unity argument or define it with an environment variable UNITY_HOME')
+        Utility.Log('Unity home path not found, use -unity argument or define it with an environment variable UNITY_HOME')
         sys.exit(1)
     if not os.path.exists(args.unityExe):
-        print('Unity installation not found at: %s' %args.unityExe)
+        Utility.Log('Unity installation not found at: %s' %args.unityExe)
         sys.exit(1)
     
     #log file
     if args.logFile == None:
         args.logFile = os.path.join(args.homePath, 'logFile.txt')
-    args.logFile = Workspace.FullPath(args.logFile)
+    args.logFile = Utility.FullPath(args.logFile)
     dir = os.path.dirname(args.logFile)
     if not os.path.exists(dir):
         os.makedirs(dir)
     args.func(args)
-    print('')
+    Utility.Log('')
     pass
 
 if __name__ == '__main__':
     if os.environ.get('DEV_LAUNCH'):
-        print('=====DEV_LAUNCH=====')
+        Utility.Log('=====DEV_LAUNCH=====')
         #Run(ParseArgs('copy ./1.txt ./2.txt'.split()))
         #Run(ParseArgs('del ./1.txt -ext .aa -ext .bb'.split()))
         #Run(ParseArgs('''invoke ./UnityProject PlayerSettings.bundleIdentifier com.buildutil.test
