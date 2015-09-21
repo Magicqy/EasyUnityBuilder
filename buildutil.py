@@ -128,14 +128,14 @@ def Del(path, alsoDelSuffixes = None):
 
 class Invoker:
     def __init__(self, methodName, argList):
-        self.argList = ['-executeMethod', 'Invoker.Invoke', methodName]
-        self.argList.extend(argList)
+        self.invokeList = ['-executeMethod', 'Invoker.Invoke', methodName]
+        self.invokeList.extend(argList)
         pass
 
     def Append(self, methodName, argList):
-        self.argList.append('-next')
-        self.argList.append(methodName)
-        self.argList.extend(argList)
+        self.invokeList.append('-next')
+        self.invokeList.append(methodName)
+        self.invokeList.extend(argList)
         return self
 
     def Invoke(self, projPath, homePath, unityExe, logFilePath, batch = True, quit = True):
@@ -144,7 +144,7 @@ class Invoker:
             argList.append('-batchmode')
         if quit:
             argList.append('-quit')
-        argList.extend(self.argList)
+        argList.extend(self.invokeList)
 
         Utility.Log('===Invoke===')
         Utility.Log('unityPath:       %s' %unityExe)
@@ -153,20 +153,13 @@ class Invoker:
         Utility.Log('batchmode:       %s' %batch)
         Utility.Log('quit:            %s' %quit)
         Utility.Log('')
-        for i in range(2, len(self.argList)):
-            arg = self.argList[i]
-            if isinstance(arg, list):
-                arg = '%s' %' '.join(arg)
-            if arg.startswith('-'):
-                Utility.Log('')
-            else:
-                Utility.Log(arg),
-        Utility.Log('')
+
+        for i in range(2, len(self.invokeList)):
+            Utility.Log(self.invokeList[i])
         
         if os.path.isdir(projPath):
             try:
                 Setup(projPath, homePath)
-                Utility.Log('')
                 Utility.Log(' '.join(argList))
                 ret = subprocess.call(argList)
                 if ret != 0:
@@ -307,6 +300,7 @@ def PackageiOSCmd(args):
     Utility.Log('productName:     %s' %productName)
     Utility.Log('pkgOutFile:      %s' %pkgOutFile)
     Utility.Log('')
+
     #try resolve the 'User Interaction Is Not Allowed' problem when run from shell
     if args.keychain:
         argList = ['security', 'unlock-keychain', '-p', args.keychain[1], Utility.FullPath(args.keychain[0])]
@@ -503,7 +497,6 @@ def Run(args):
     if not os.path.exists(dir):
         os.makedirs(dir)
     args.func(args)
-    Utility.Log('')
     pass
 
 if __name__ == '__main__':
