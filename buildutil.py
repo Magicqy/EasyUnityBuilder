@@ -385,6 +385,40 @@ def DelCmd(args):
     Del(path, args.sfx)
     pass
 
+def Run(args):
+    #workspace home
+    args.homePath = os.path.dirname(sys.argv[0])
+    #unity home
+    if args.unity == None:
+        args.unity = os.environ.get('UNITY_HOME')
+    args.unity = Utility.FullPath(args.unity)
+    #unity executable
+    if sys.platform.startswith('win32'):
+        args.winOS = True
+        args.unityExe = os.path.join(args.unity, 'Unity.exe')
+    elif sys.platform.startswith('darwin'):
+        args.winOS = False
+        args.unityExe = os.path.join(args.unity, 'Unity.app/Contents/MacOS/Unity')
+    else:
+        Utility.Log('Unsupported platform: %s' %sys.platform, 1)
+
+    if not os.path.exists(args.unity):
+        Utility.Log('Unity home path not found, use -unity argument or define it with an environment variable UNITY_HOME')
+        sys.exit(1)
+    if not os.path.exists(args.unityExe):
+        Utility.Log('Unity installation not found at: %s' %args.unityExe)
+        sys.exit(1)
+    
+    #log file
+    if args.logFile == None:
+        args.logFile = os.path.join(args.homePath, 'logFile.txt')
+    args.logFile = Utility.FullPath(args.logFile)
+    dir = os.path.dirname(args.logFile)
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+    args.func(args)
+    pass
+
 #parse arguments
 def ParseArgs(explicitArgs = None):
     parser = argparse.ArgumentParser(description = 'build util for Unity')
@@ -465,52 +499,6 @@ def ParseArgs(explicitArgs = None):
     return parser.parse_args(explicitArgs)
     pass
 
-def Run(args):
-    #workspace home
-    args.homePath = os.path.dirname(sys.argv[0])
-    #unity home
-    if args.unity == None:
-        args.unity = os.environ.get('UNITY_HOME')
-    args.unity = Utility.FullPath(args.unity)
-    #unity executable
-    if sys.platform.startswith('win32'):
-        args.winOS = True
-        args.unityExe = os.path.join(args.unity, 'Unity.exe')
-    elif sys.platform.startswith('darwin'):
-        args.winOS = False
-        args.unityExe = os.path.join(args.unity, 'Unity.app/Contents/MacOS/Unity')
-    else:
-        Utility.Log('Unsupported platform: %s' %sys.platform, 1)
-
-    if not os.path.exists(args.unity):
-        Utility.Log('Unity home path not found, use -unity argument or define it with an environment variable UNITY_HOME')
-        sys.exit(1)
-    if not os.path.exists(args.unityExe):
-        Utility.Log('Unity installation not found at: %s' %args.unityExe)
-        sys.exit(1)
-    
-    #log file
-    if args.logFile == None:
-        args.logFile = os.path.join(args.homePath, 'logFile.txt')
-    args.logFile = Utility.FullPath(args.logFile)
-    dir = os.path.dirname(args.logFile)
-    if not os.path.exists(dir):
-        os.makedirs(dir)
-    args.func(args)
-    pass
-
 if __name__ == '__main__':
-    if os.environ.get('DEV_LAUNCH'):
-        Utility.Log('=====DEV_LAUNCH=====')
-        #Run(ParseArgs('copy ./1.txt ./2.txt'.split()))
-        #Run(ParseArgs('del ./1.txt -ext .aa -ext .bb'.split()))
-        #Run(ParseArgs('''invoke ./UnityProject PlayerSettings.bundleIdentifier com.buildutil.test
-        #-next BuildUtility.AddSymbolForGroup Android ANDROID
-        #-next BuildUtility.AddSymbolForGroup iPhone IOS'''.split()))
-        #Run(ParseArgs('build ./UnityProject android ./android'.split()))
-        #Run(ParseArgs('build ./UnityProject ios ./ios'.split()))
-        #Run(ParseArgs('build ./UnityProject win ./win'.split()))   
-        #Run(ParseArgs('build ./UnityProject osx ./osx'.split()))
-    else:
-        Run(ParseArgs())
+    Run(ParseArgs())
     pass

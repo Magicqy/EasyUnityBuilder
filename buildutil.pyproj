@@ -15,7 +15,8 @@
     <InterpreterVersion>2.7</InterpreterVersion>
     <Name>buildutil</Name>
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
-    <Environment>DEV_LAUNCH=True</Environment>
+    <Environment>
+    </Environment>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
   <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
