@@ -43,15 +43,26 @@ class BuildOptions:
 
 class Utility:
     @staticmethod
+    def InitLogging(logFile, fileMode):
+        import logging
+        logger = logging.getLogger()
+        logger.setLevel(logging.INFO)
+        logger.addHandler(logging.StreamHandler(sys.stdout))
+        if logFile:
+            logger.addHandler(logging.FileHandler(logFile, 'w' if fileMode else 'a'))
+        Utility.logger = logger
+        pass
+
+    @staticmethod
     def Log(msg, exitWithCode = None):
-        print(msg)
+        Utility.logger.info(msg)
         if exitWithCode != None:
             sys.exit(exitWithCode)
         pass
 
     @staticmethod
     def FullPath(path):
-        return os.path.abspath(os.path.expanduser(path)) if path else ''
+        return os.path.abspath(os.path.expanduser(path)) if path else None
 
     extSwitch = {
         BuildTarget.Android : lambda ext, noexp: '.apk' if noexp and len(ext) == 0 else ext,
@@ -138,8 +149,10 @@ class Invoker:
         self.invokeList.extend(argList)
         return self
 
-    def Invoke(self, projPath, homePath, unityExe, logFilePath, batch = True, quit = True):
-        argList = [unityExe, '-logFile', logFilePath, '-projectPath', projPath]
+    def Invoke(self, projPath, homePath, unityExe, unityLog, batch = True, quit = True):
+        argList = [unityExe, '-projectPath', projPath]
+        if unityLog:
+            argList.extend(['-logFile', unityLog])
         if batch:
             argList.append('-batchmode')
         if quit:
@@ -149,7 +162,7 @@ class Invoker:
         Utility.Log('===Invoke===')
         Utility.Log('unityPath:       %s' %unityExe)
         Utility.Log('projectPath:     %s' %projPath)
-        Utility.Log('logFilePath:     %s' %logFilePath)
+        Utility.Log('unityLogPath:    %s' %unityLog)
         Utility.Log('batchmode:       %s' %batch)
         Utility.Log('quit:            %s' %quit)
         Utility.Log('')
@@ -187,7 +200,7 @@ def BuildCmd(args):
         os.makedirs(dir)
 
     ivk = Invoker('BuildUtility.BuildPlayer', [outPath, buildTarget, buildOpts])
-    ret = ivk.Invoke(projPath, args.homePath, args.unityExe, args.logFile, not args.nobatch, not args.noquit)
+    ret = ivk.Invoke(projPath, args.homePath, args.unityExe, args.ulog, not args.nobatch, not args.noquit)
     
     #place exported project in outPath/ instead of outPath/productName/
     if ret == 0 and buildTarget == BuildTarget.Android and BuildOptions.AcceptExternalModifications(buildOpts) and not args.dph:
@@ -206,7 +219,7 @@ def InvokeCmd(args):
     if args.next:
         for nlist in args.next:
             ivk.Append(nlist[0], nlist[1:])
-    ivk.Invoke(projPath, args.homePath, args.unityExe, args.logFile, not args.nobatch, not args.noquit)
+    ivk.Invoke(projPath, args.homePath, args.unityExe, args.ulog, not args.nobatch, not args.noquit)
     pass
 
 def PackageAndroidCmd(args):
@@ -386,6 +399,15 @@ def DelCmd(args):
     pass
 
 def Run(args):
+    #initialize logging
+    logFile = Utility.FullPath(args.log)
+    if logFile:
+        dir = os.path.dirname(logFile)
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+    Utility.InitLogging(logFile, args.wmode)
+    args.ulog = Utility.FullPath(args.ulog)
+
     #workspace home
     args.homePath = os.path.dirname(sys.argv[0])
     #unity home
@@ -408,22 +430,17 @@ def Run(args):
     if not os.path.exists(args.unityExe):
         Utility.Log('Unity installation not found at: %s' %args.unityExe)
         sys.exit(1)
-    
-    #log file
-    if args.logFile == None:
-        args.logFile = os.path.join(args.homePath, 'logFile.txt')
-    args.logFile = Utility.FullPath(args.logFile)
-    dir = os.path.dirname(args.logFile)
-    if not os.path.exists(dir):
-        os.makedirs(dir)
+
     args.func(args)
     pass
 
 #parse arguments
 def ParseArgs(explicitArgs = None):
     parser = argparse.ArgumentParser(description = 'build util for Unity')
+    parser.add_argument('-log', help = 'build util log file path')
+    parser.add_argument('-wmode', action = 'store_true', help = 'use w mode to open log file, by default the mode is a')
     parser.add_argument('-unity', help = 'unity home path')
-    parser.add_argument('-logFile', help = 'unity log file path')
+    parser.add_argument('-ulog', help = 'unity editor log file path')
     parser.add_argument('-nobatch', action = 'store_true', help = 'run unity without -batchmode')
     parser.add_argument('-noquit', action = 'store_true', help = 'run unity without -quit')
 
@@ -450,7 +467,7 @@ def ParseArgs(explicitArgs = None):
 
     packandroid = subparsers.add_parser('packandroid', help = 'pacakge android project with gralde')
     packandroid.add_argument('projPath', help = 'target project path')
-    packandroid.add_argument('-bf', help = 'specifies the build file', required = True)
+    packandroid.add_argument('-bf', help = 'specifies the build file')
     group = packandroid.add_mutually_exclusive_group(required = True)
     group.add_argument('-task', nargs = '+', help = 'full task names to execute')
     group.add_argument('-var', nargs = '+',
