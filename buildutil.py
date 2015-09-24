@@ -45,12 +45,13 @@ class Utility:
     @staticmethod
     def InitLogging(logFile, fileMode):
         import logging
-        logger = logging.getLogger()
+        logger = Utility.logger = logging.getLogger()
         logger.setLevel(logging.INFO)
         logger.addHandler(logging.StreamHandler(sys.stdout))
         if logFile:
             logger.addHandler(logging.FileHandler(logFile, 'w' if fileMode else 'a'))
-        Utility.logger = logger
+            Utility.Log('===Initializing===')
+            Utility.Log('logFile: %s' %logFile)
         pass
 
     @staticmethod
