@@ -51,7 +51,8 @@ class Utility:
         if logFile:
             logger.addHandler(logging.FileHandler(logFile, 'w' if fileMode else 'a'))
             Utility.Log('===Initializing===')
-            Utility.Log('logFile: %s' %logFile)
+            Utility.Log('datetime:  %s' %datetime.datetime.now())
+            Utility.Log('logFile:   %s' %logFile)
         pass
 
     @staticmethod
@@ -167,9 +168,9 @@ class Invoker:
         Utility.Log('batchmode:       %s' %batch)
         Utility.Log('quit:            %s' %quit)
         Utility.Log('')
-
         for i in range(2, len(self.invokeList)):
             Utility.Log(self.invokeList[i])
+        Utility.Log('')
         
         if os.path.isdir(projPath):
             try:
