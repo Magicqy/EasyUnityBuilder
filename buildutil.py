@@ -1,4 +1,12 @@
 ﻿#!/usr/bin/python
+
+'''
+utility for build and package Unity3D projects.
+
+author:     Qu Yong <work.qu@outlook.com>
+version:    0.5.0
+'''
+
 import os, sys, shutil, datetime, argparse, subprocess, plistlib
 
 class BuildTarget:
