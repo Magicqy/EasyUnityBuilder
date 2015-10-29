@@ -420,26 +420,22 @@ def Run(args):
 
     #workspace home
     args.homePath = os.path.dirname(sys.argv[0])
-    #unity home
-    if args.unity == None:
-        args.unity = os.environ.get('UNITY_HOME')
-    args.unity = Utility.FullPath(args.unity)
-    #unity executable
-    if sys.platform.startswith('win32'):
-        args.winOS = True
-        args.unityExe = os.path.join(args.unity, 'Unity.exe')
-    elif sys.platform.startswith('darwin'):
-        args.winOS = False
-        args.unityExe = os.path.join(args.unity, 'Unity.app/Contents/MacOS/Unity')
+    #unity home and executable
+    args.unity = Utility.FullPath(args.unity) if args.unity else os.environ.get('UNITY_HOME')
+    if args.unity and os.path.exists(args.unity):
+        if sys.platform.startswith('win32'):
+            args.winOS = True
+            args.unityExe = os.path.join(args.unity, 'Unity.exe')
+        elif sys.platform.startswith('darwin'):
+            args.winOS = False
+            args.unityExe = os.path.join(args.unity, 'Unity.app/Contents/MacOS/Unity')
+        else:
+            Utility.Log('Unsupported platform: %s' %sys.platform, 1)
+        
+        if args.unityExe == None or os.path.exists(args.unityExe) == False:
+            Utility.Log('Unity executable not found at: %s' %args.unityExe, 1)
     else:
-        Utility.Log('Unsupported platform: %s' %sys.platform, 1)
-
-    if not os.path.exists(args.unity):
-        Utility.Log('Unity home path not found, use -unity argument or define it with an environment variable UNITY_HOME')
-        sys.exit(1)
-    if not os.path.exists(args.unityExe):
-        Utility.Log('Unity installation not found at: %s' %args.unityExe)
-        sys.exit(1)
+        Utility.Log('Unity home path not found, use -unity argument or define it with an environment variable UNITY_HOME', 1)
 
     args.func(args)
     pass
