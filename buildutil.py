@@ -51,7 +51,7 @@ class BuildOptions:
 
 class Utility:
     @staticmethod
-    def InitLogging(logFile, fileMode):
+    def InitLogging(logFile, fileMode, uLogFile):
         import logging
         logger = Utility.logger = logging.getLogger()
         logger.setLevel(logging.INFO)
@@ -61,12 +61,22 @@ class Utility:
             Utility.Log('===Initializing===')
             Utility.Log('datetime:  %s' %datetime.datetime.now())
             Utility.Log('logFile:   %s' %logFile)
+        Utility.uLogFile = uLogFile
         pass
 
     @staticmethod
     def Log(msg, exitWithCode = None):
         Utility.logger.info(msg)
         if exitWithCode != None:
+            path = Utility.uLogFile
+            if path and os.path.exists(path):
+                Utility.logger.info('')
+                Utility.logger.info('===Unity Log File===')
+                logFile = open(path)
+                try:
+                    Utility.logger.info(logFile.read())
+                finally:
+                    logFile.close()
             sys.exit(exitWithCode)
         pass
 
@@ -410,13 +420,13 @@ def DelCmd(args):
 
 def Run(args):
     #initialize logging
-    logFile = Utility.FullPath(args.log)
-    if logFile:
-        dir = os.path.dirname(logFile)
+    args.ulog = Utility.FullPath(args.ulog)
+    args.log = Utility.FullPath(args.log) 
+    if args.log:
+        dir = os.path.dirname(args.log)
         if not os.path.exists(dir):
             os.makedirs(dir)
-    Utility.InitLogging(logFile, args.wmode)
-    args.ulog = Utility.FullPath(args.ulog)
+    Utility.InitLogging(args.log, args.wmode, args.ulog)
 
     #workspace home
     args.homePath = os.path.dirname(sys.argv[0])
