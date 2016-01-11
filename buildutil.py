@@ -201,7 +201,7 @@ class Invoker:
             finally:
                 Cleanup(projPath)
         else:
-            Utility.Log('projectPath not exist: %s' %projPath)
+            Utility.Log('projectPath not exist: %s' %projPath, 1)
     pass
 
 def BuildCmd(args):
@@ -289,7 +289,7 @@ def PackageAndroidCmd(args):
         if ret != 0:
             Utility.Log('execute gradle task failed with retcode: %s' %ret, ret)
     except:
-        Utility.Log('package failed with excpetion')
+        Utility.Log('package failed with excpetion', 1)
     pass
 
 def PackageiOSCmd(args):
