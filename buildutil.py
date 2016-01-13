@@ -51,32 +51,23 @@ class BuildOptions:
 
 class Utility:
     @staticmethod
-    def InitLogging(logFile, fileMode, uLogFile):
+    def InitLogging(homePath, logFile, logFileMode, unityLogFile):
         import logging
         logger = Utility.logger = logging.getLogger()
         logger.setLevel(logging.INFO)
         logger.addHandler(logging.StreamHandler(sys.stdout))
         if logFile:
-            logger.addHandler(logging.FileHandler(logFile, 'w' if fileMode else 'a'))
+            logger.addHandler(logging.FileHandler(logFile, 'w' if logFileMode else 'a'))
             Utility.Log('===Initializing===')
             Utility.Log('datetime:  %s' %datetime.datetime.now())
             Utility.Log('logFile:   %s' %logFile)
-        Utility.uLogFile = uLogFile
+        Utility.invokeLogFile = os.path.join(homePath, 'invoke.log')
         pass
 
     @staticmethod
     def Log(msg, exitWithCode = None):
         Utility.logger.info(msg)
         if exitWithCode != None:
-            path = Utility.uLogFile
-            if path and os.path.exists(path):
-                Utility.logger.info('')
-                Utility.logger.info('===Unity Log File===')
-                logFile = open(path)
-                try:
-                    Utility.logger.info(logFile.read())
-                finally:
-                    logFile.close()
             sys.exit(exitWithCode)
         pass
 
@@ -106,6 +97,14 @@ def Setup(projPath, homePath):
 
 def Cleanup(projPath):
     Del(os.path.join(projPath, 'Assets/Editor/_BuildUtility_'), ['.meta'])
+    path = Utility.invokeLogFile
+    if path and os.path.exists(path):
+        logFile = open(path)
+        try:
+            Utility.logger.info(logFile.read())
+        finally:
+            logFile.close()
+            Del(path)
     pass
 
 def Copy(src, dst, append = False, stat = False):
@@ -177,6 +176,8 @@ class Invoker:
             argList.append('-batchmode')
         if quit:
             argList.append('-quit')
+        if Utility.invokeLogFile:
+            argList.extend(['-invokeLog', Utility.invokeLogFile])
         argList.extend(self.invokeList)
 
         Utility.Log('===Invoke===')
@@ -419,6 +420,9 @@ def DelCmd(args):
     pass
 
 def Run(args):
+    #workspace home
+    args.homePath = os.path.dirname(sys.argv[0])
+
     #initialize logging
     args.ulog = Utility.FullPath(args.ulog)
     args.log = Utility.FullPath(args.log) 
@@ -426,10 +430,8 @@ def Run(args):
         dir = os.path.dirname(args.log)
         if not os.path.exists(dir):
             os.makedirs(dir)
-    Utility.InitLogging(args.log, args.wmode, args.ulog)
+    Utility.InitLogging(args.homePath, args.log, args.wmode, args.ulog)
 
-    #workspace home
-    args.homePath = os.path.dirname(sys.argv[0])
     #unity home and executable
     args.unity = Utility.FullPath(args.unity) if args.unity else os.environ.get('UNITY_HOME')
     if args.unity and os.path.exists(args.unity):
