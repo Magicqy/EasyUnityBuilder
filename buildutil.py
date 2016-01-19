@@ -463,6 +463,14 @@ def ParseArgs(explicitArgs = None):
     parser.add_argument('-noquit', action = 'store_true', help = 'run unity without -quit')
 
     subparsers = parser.add_subparsers(help = 'sub-command list')
+    invoke = subparsers.add_parser('invoke', help = 'invoke method with arguments')
+    invoke.add_argument('projPath', help = 'target unity project path')
+    invoke.add_argument('methodName',
+                        help = 'method name to invoke, [Assembly:(Optional)]Namespace.SubNamespace.Class+NestedClass.Method')
+    invoke.add_argument('args', nargs = '*', help = 'method arguments, support types: primitive / string / enum')
+    invoke.add_argument('-next', action = 'append', nargs = '+', help = 'next method and arguments to invoke')
+    invoke.set_defaults(func = InvokeCmd)
+
     build = subparsers.add_parser('build', help='build player for unity project')
     build.add_argument('projPath', help = 'target unity project path')
     build.add_argument('buildTarget', choices = ['android', 'ios', 'win', 'win64', 'osx', 'osx64'],
@@ -474,14 +482,6 @@ def ParseArgs(explicitArgs = None):
     build.add_argument('-dph', action = 'store_true',
                        help = 'unity export android project to outPath/{productName}/{exportProj} by default, without this option, project will be export to outPath/{exportProj}')
     build.set_defaults(func = BuildCmd)
-
-    invoke = subparsers.add_parser('invoke', help = 'invoke method with arguments')
-    invoke.add_argument('projPath', help = 'target unity project path')
-    invoke.add_argument('methodName',
-                        help = 'method name to invoke, [Assembly:(Optional)]Namespace.SubNamespace.Class+NestedClass.Method')
-    invoke.add_argument('args', nargs = '*', help = 'method arguments, support types: primitive / string / enum')
-    invoke.add_argument('-next', action = 'append', nargs = '+', help = 'next method and arguments to invoke')
-    invoke.set_defaults(func = InvokeCmd)
 
     packandroid = subparsers.add_parser('packandroid', help = 'pacakge android project with gralde')
     packandroid.add_argument('projPath', help = 'target project path')
