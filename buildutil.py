@@ -661,10 +661,13 @@ class _TaskArgParser(dict):
             self.__append(k)
     pass
 
-def runTask(task, mapargs, **kwargs):
+def runTask(task, shared_args, **kwargs):
     '''
-    argument names
-    common:         log, wmode, ulog, unity, nobatch, noquit
+    task list:
+    INVOKE, BUILD, PACK_ANDROID, PACK_IOS, COPY, DEL
+
+    argument name list:
+    shared:         log, wmode, ulog, unity, nobatch, noquit
     invoke:         projPath, calls
     build:          projPath, buildTarget, outPath, opt, exp, dev, dph
     packandroid:    projPath, bf, task, var, pfx, sfx, prop, ndp
@@ -672,7 +675,7 @@ def runTask(task, mapargs, **kwargs):
     copy:           src, dst, append, stat
     del:            src, sfx
     '''
-    parser = _TaskArgParser(mapargs, cmd = task)
+    parser = _TaskArgParser(shared_args, cmd = task)
     parser.update(kwargs)
     explictArgs = parser.parse()
     _run(_parse_args(explictArgs))
