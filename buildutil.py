@@ -9,7 +9,8 @@ version:    0.5.0
 
 import os, sys, shutil, datetime, argparse, subprocess, plistlib
 
-class BuildTarget:
+#util methods
+class _BuildTarget:
     Android = 'Android'
     iPhone = 'iPhone'
     StandaloneWindows = 'StandaloneWindows'
@@ -17,7 +18,7 @@ class BuildTarget:
     StandaloneOSXIntel = 'StandaloneOSXIntel'
     StandaloneOSXIntel64 = 'StandaloneOSXIntel64'
     
-    btSwitch = {
+    _switch = {
         'android' : Android,
         'ios' : iPhone,
         'win' : StandaloneWindows,
@@ -28,10 +29,10 @@ class BuildTarget:
 
     @staticmethod
     def From(targetStr):
-        return BuildTarget.btSwitch[targetStr]
+        return _BuildTarget._switch[targetStr]
     pass
 
-class BuildOptions:
+class _BuildOptions:
     AcceptExternalModificationsToPlayer = 'AcceptExternalModificationsToPlayer'
     Development = 'Development'
 
@@ -39,82 +40,61 @@ class BuildOptions:
     def From(opt, exp, dev):
         bo = str(opt)
         if exp:
-            bo = '%s|%s' %(bo, BuildOptions.AcceptExternalModificationsToPlayer)
+            bo = '%s|%s' %(bo, _BuildOptions.AcceptExternalModificationsToPlayer)
         if dev:
-            bo = '%s|%s' %(bo, BuildOptions.Development)
+            bo = '%s|%s' %(bo, _BuildOptions.Development)
         return bo
 
     @staticmethod
     def AcceptExternalModifications(buildOpts):
-        return buildOpts.find(BuildOptions.AcceptExternalModificationsToPlayer) >= 0
+        return buildOpts.find(_BuildOptions.AcceptExternalModificationsToPlayer) >= 0
     pass
 
-class Utility:
-    @staticmethod
-    def InitLogging(homePath, logFile, logFileMode, unityLogFile):
-        import logging
-        logger = logging.getLogger()
-        for hd in logger.handlers:
-            hd.close()
-        del logger.handlers[:]
-        logger.setLevel(logging.INFO)
-        logger.addHandler(logging.StreamHandler(sys.stdout))
-        if logFile:
-            logger.addHandler(logging.FileHandler(logFile, 'w' if logFileMode else 'a'))
-            Utility.Log('===Initializing===')
-            Utility.Log('datetime:  %s' %datetime.datetime.now())
-            Utility.Log('logFile:   %s' %logFile)
-        Utility.invokeLogFile = os.path.join(homePath, 'invoke.log')
-        pass
-
-    @staticmethod
-    def Log(msg, exitWithCode = None):
-        import logging
-        logging.info(msg)
-        if exitWithCode != None:
-            logging.shutdown()
-            sys.exit(exitWithCode)
-        pass
-
-    @staticmethod
-    def FullPath(path):
-        return os.path.abspath(os.path.expanduser(path)) if path else None
-
-    extSwitch = {
-        BuildTarget.Android : lambda ext, noexp: '.apk' if noexp and len(ext) == 0 else ext,
-        BuildTarget.iPhone : lambda ext, noexp: ext,
-        BuildTarget.StandaloneWindows : lambda ext, noexp: '/bin.exe' if len(ext) == 0 else ext,
-        BuildTarget.StandaloneWindows64 : lambda ext, noexp: '/bin.exe' if len(ext) == 0 else ext,
-        BuildTarget.StandaloneOSXIntel : lambda ext, noexp: '.app' if len(ext) == 0 else ext,
-        BuildTarget.StandaloneOSXIntel64 : lambda ext, noexp: '.app' if len(ext) == 0 else ext,
-        }
-    @staticmethod
-    def CorrectExt(outPath, buildTarget, buildOpts):
-        root, ext = os.path.splitext(outPath)
-        return root + Utility.extSwitch[buildTarget](ext, buildOpts.find(BuildOptions.AcceptExternalModificationsToPlayer) < 0)
+def _initLogging(homePath, logFile, logFileMode, unityLogFile):
+    import logging
+    logger = logging.getLogger()
+    for hd in logger.handlers:
+        hd.close()
+    del logger.handlers[:]
+    logger.setLevel(logging.INFO)
+    logger.addHandler(logging.StreamHandler(sys.stdout))
+    if logFile:
+        logger.addHandler(logging.FileHandler(logFile, 'w' if logFileMode else 'a'))
+        _logInfo('===Initializing===')
+        _logInfo('datetime:  %s' %datetime.datetime.now())
+        _logInfo('logFile:   %s' %logFile)
     pass
 
-#util methods
-def Setup(projPath, homePath):
-    Copy(os.path.join(homePath, 'BuildUtility/BuildUtility.cs'), os.path.join(projPath, 'Assets/Editor/_BuildUtility_/BuildUtility.cs'))
-    Copy(os.path.join(homePath, 'BuildUtility/Invoker/Invoker.cs'), os.path.join(projPath, 'Assets/Editor/_BuildUtility_/Invoker.cs'))
+def _logInfo(msg, exitWithCode = None):
+    import logging
+    logging.info(msg)
+    if exitWithCode != None:
+        logging.shutdown()
+        sys.exit(exitWithCode)
     pass
 
-def Cleanup(projPath):
-    Del(os.path.join(projPath, 'Assets/Editor/_BuildUtility_'), ['.meta'])
-    path = Utility.invokeLogFile
-    if path and os.path.exists(path):
-        logFile = open(path)
-        try:
-            Utility.Log(logFile.read())
-        finally:
-            logFile.close()
-            Del(path)
+def _fullPath(path):
+    return os.path.abspath(os.path.expanduser(path)) if path else None
+
+def _correctExt(outPath, buildTarget, buildOpts):
+    root, ext = os.path.splitext(outPath)
+    noexp = buildOpts.find(_BuildOptions.AcceptExternalModificationsToPlayer) < 0
+    if buildTarget == _BuildTarget.Android:
+        return root + '.apk' if noexp and len(ext) == 0 else ext
+    elif buildTarget == _BuildTarget.iPhone:
+        return root + ext
+    elif buildTarget == _BuildTarget.StandaloneWindows or ext == _BuildTarget.StandaloneWindows64:
+        return root + '/bin.exe' if len(ext) == 0 else ext
+    elif buildTarget == _BuildTarget.StandaloneOSXIntel or ext == _BuildTarget.StandaloneOSXIntel64:
+        return root + '.app' if len(ext) == 0 else ext
+    else:
+        _logInfo('invalid build target:%s' %buildTarget)
+        return root + ext
     pass
 
-def Copy(src, dst, append = False, stat = False):
+def _copy(src, dst, append = False, stat = False):
     if src == dst or src == None or not os.path.exists(src):
-        Utility.Log('copy failed, %s >> %s' %(src, dst), 1)
+        _logInfo('copy failed, %s >> %s' %(src, dst), 1)
 
     if os.path.isdir(src):
         #src and dst are dirs
@@ -131,11 +111,11 @@ def Copy(src, dst, append = False, stat = False):
         for item in os.listdir(src):
             srcPath = os.path.join(src, item)
             dstPath = os.path.join(dst, item)
-            Copy(srcPath, dstPath, append, stat)
+            _copy(srcPath, dstPath, append, stat)
     elif os.path.isfile(src):
         #src and dst are files
         if os.path.exists(dst):
-            Del(dst)
+            _del(dst)
         else:
             dstDir = os.path.dirname(dst)
             if not os.path.exists(dstDir):
@@ -145,35 +125,35 @@ def Copy(src, dst, append = False, stat = False):
         if stat:
             shutil.copystat(src, dst)
     else:
-        Utility.Log('path is not a file or directory: %s' %src)
+        _logInfo('path is not a file or directory: %s' %src)
     pass
 
-def Del(path, alsoDelSuffixes = None):
+def _del(path, alsoDelSuffixes = None):
     if os.path.isfile(path):
         os.remove(path)
     elif os.path.isdir(path):
         shutil.rmtree(path)
     elif os.path.exists(path):
-        Utility.Log('path is not a file or directory: %s' %path)
+        _logInfo('path is not a file or directory: %s' %path)
 
     if alsoDelSuffixes:
         for suffix in alsoDelSuffixes:
-            Del(path + suffix)
+            _del(path + suffix)
     pass
 
-class Invoker:
+class _Invoker:
     def __init__(self, methodName, argList):
         self.invokeList = ['-executeMethod', 'Invoker.Invoke', methodName]
         self.invokeList.extend(argList)
         pass
 
-    def Append(self, methodName, argList):
+    def append(self, methodName, argList):
         self.invokeList.append('-next')
         self.invokeList.append(methodName)
         self.invokeList.extend(argList)
         return self
 
-    def Invoke(self, projPath, homePath, unityExe, unityLog, batch = True, quit = True):
+    def invoke(self, projPath, homePath, unityExe, unityLog, batch = True, quit = True):
         argList = [unityExe, '-projectPath', projPath]
         if unityLog:
             argList.extend(['-logFile', unityLog])
@@ -181,77 +161,97 @@ class Invoker:
             argList.append('-batchmode')
         if quit:
             argList.append('-quit')
-        if Utility.invokeLogFile:
-            argList.extend(['-invokeLog', Utility.invokeLogFile])
+        self.invokeLogFile = os.path.join(projPath, 'invoke.log')
+        argList.extend(['-invokeLog', self.invokeLogFile])
         argList.extend(self.invokeList)
 
-        Utility.Log('===Invoke===')
-        Utility.Log('unityPath:       %s' %unityExe)
-        Utility.Log('projectPath:     %s' %projPath)
-        Utility.Log('unityLogPath:    %s' %unityLog)
-        Utility.Log('batchmode:       %s' %batch)
-        Utility.Log('quit:            %s' %quit)
-        Utility.Log('')
+        _logInfo('===Invoke===')
+        _logInfo('unityPath:       %s' %unityExe)
+        _logInfo('projectPath:     %s' %projPath)
+        _logInfo('unityLogPath:    %s' %unityLog)
+        _logInfo('batchmode:       %s' %batch)
+        _logInfo('quit:            %s' %quit)
+        _logInfo('')
         for i in range(2, len(self.invokeList)):
-            Utility.Log(self.invokeList[i])
-        Utility.Log('')
+            _logInfo(self.invokeList[i])
+        _logInfo('')
         
         if os.path.isdir(projPath):
             try:
-                Setup(projPath, homePath)
-                Utility.Log(' '.join(argList))
+                self._setup(projPath, homePath)
+                _logInfo(' '.join(argList))
                 ret = subprocess.call(argList)
                 if ret != 0:
-                    Utility.Log('execute fail with retcode: %s' %ret, ret)
+                    _logInfo('execute fail with retcode: %s' %ret, ret)
                 return ret
             finally:
-                Cleanup(projPath)
+                self._cleanup(projPath)
         else:
-            Utility.Log('projectPath not exist: %s' %projPath, 1)
+            _logInfo('projectPath not exist: %s' %projPath, 1)
+        pass
+         
+    def _setup(self, projPath, homePath):
+        _copy(os.path.join(homePath, 'BuildUtility/BuildUtility.cs'),
+              os.path.join(projPath, 'Assets/Editor/_BuildUtility_/BuildUtility.cs'))
+        _copy(os.path.join(homePath, 'BuildUtility/Invoker/Invoker.cs'),
+              os.path.join(projPath, 'Assets/Editor/_BuildUtility_/Invoker.cs'))
+        pass
+
+    def _cleanup(self, projPath):
+        _del(os.path.join(projPath, 'Assets/Editor/_BuildUtility_'), ['.meta'])
+        path = self.invokeLogFile
+        if path and os.path.exists(path):
+            logFile = open(path)
+            try:
+                _logInfo(logFile.read())
+            finally:
+                logFile.close()
+                _del(path)
+        pass
     pass
 
-def BuildCmd(args):
-    projPath = Utility.FullPath(args.projPath)
-    buildTarget = BuildTarget.From(args.buildTarget)
-    buildOpts = BuildOptions.From(args.opt, args.exp, args.dev)
-    outPath = Utility.CorrectExt(Utility.FullPath(args.outPath), buildTarget, buildOpts)
+def _buildCmd(args):
+    projPath = _fullPath(args.projPath)
+    buildTarget = _BuildTarget.From(args.buildTarget)
+    buildOpts = _BuildOptions.From(args.opt, args.exp, args.dev)
+    outPath = _correctExt(_fullPath(args.outPath), buildTarget, buildOpts)
 
     #cleanup
-    Del(outPath)
-    if buildTarget == BuildTarget.StandaloneWindows or buildTarget == BuildTarget.StandaloneWindows64:
-        Del(os.path.splitext(outPath)[0] + '_Data')
+    _del(outPath)
+    if buildTarget == _BuildTarget.StandaloneWindows or buildTarget == _BuildTarget.StandaloneWindows64:
+        _del(os.path.splitext(outPath)[0] + '_Data')
 
     dir = os.path.dirname(outPath)
     if not os.path.exists(dir):
         os.makedirs(dir)
 
-    ivk = Invoker('BuildUtility.BuildPlayer', [outPath, buildTarget, buildOpts])
-    ret = ivk.Invoke(projPath, args.homePath, args.unityExe, args.ulog, not args.nobatch, not args.noquit)
+    ivk = _Invoker('BuildUtility.BuildPlayer', [outPath, buildTarget, buildOpts])
+    ret = ivk.invoke(projPath, args.homePath, args.unityExe, args.ulog, not args.nobatch, not args.noquit)
     
     #place exported project in outPath/ instead of outPath/productName/
-    if ret == 0 and buildTarget == BuildTarget.Android and BuildOptions.AcceptExternalModifications(buildOpts) and not args.dph:
+    if ret == 0 and buildTarget == _BuildTarget.Android and _BuildOptions.AcceptExternalModifications(buildOpts) and not args.dph:
         for dir in os.listdir(outPath):
             expDir = os.path.join(outPath, dir)
             if os.path.isdir(expDir):
-                Copy(expDir, outPath, True)
-                Del(expDir)
+                _copy(expDir, outPath, True)
+                _del(expDir)
                 break
     pass
 
-def InvokeCmd(args):
-    projPath = Utility.FullPath(args.projPath)
+def _invokeCmd(args):
+    projPath = _fullPath(args.projPath)
     
-    ivk = Invoker(args.methodName, args.args)
+    ivk = _Invoker(args.methodName, args.args)
     if args.next:
         for nlist in args.next:
-            ivk.Append(nlist[0], nlist[1:])
-    ivk.Invoke(projPath, args.homePath, args.unityExe, args.ulog, not args.nobatch, not args.noquit)
+            ivk.append(nlist[0], nlist[1:])
+    ivk.invoke(projPath, args.homePath, args.unityExe, args.ulog, not args.nobatch, not args.noquit)
     pass
 
-def PackageAndroidCmd(args):
-    projPath = Utility.FullPath(args.projPath)
+def _packageAndroidCmd(args):
+    projPath = _fullPath(args.projPath)
     gradlePath = os.path.join(args.homePath, 'gradlew')
-    buildFile = Utility.FullPath(args.bf) if args.bf else os.path.join(projPath, 'build.gradle')
+    buildFile = _fullPath(args.bf) if args.bf else os.path.join(projPath, 'build.gradle')
     taskPrefix = args.pfx if args.pfx else ''
     taskSuffix = '%s%s' %(args.sfx[0].upper(), args.sfx[1:]) if args.sfx else ''
 
@@ -270,93 +270,93 @@ def PackageAndroidCmd(args):
     elif args.var:
         if args.pfx == None:
             if args.sfx == None:
-                Utility.Log('execute task with variants but prefix and suffix are not found')
+                _logInfo('execute task with variants but prefix and suffix are not found')
             for var in args.var:
                 argList.append('%s%s%s' %(taskPrefix, var, taskSuffix))
         else:
             for var in args.var:
                 argList.append('%s%s%s%s' %(taskPrefix, var[0].upper(), var[1:], taskSuffix))
     else:
-        Utility.Log('no task to execute', 1)
+        _logInfo('no task to execute', 1)
 
     if not os.path.isdir(projPath):
-        Utility.Log('project directory not exist: %s' %projPath, 1)
+        _logInfo('project directory not exist: %s' %projPath, 1)
     if not os.path.isfile(buildFile):
-        Utility.Log('build.gradle file not exist: %s' %buildFile, 1)
+        _logInfo('build.gradle file not exist: %s' %buildFile, 1)
 
-    Utility.Log('===Packge Android===')
-    Utility.Log('projectPath:     %s' %projPath)
-    Utility.Log('buildFile:       %s' %buildFile)
-    Utility.Log('')
+    _logInfo('===Packge Android===')
+    _logInfo('projectPath:     %s' %projPath)
+    _logInfo('buildFile:       %s' %buildFile)
+    _logInfo('')
 
     try:
-        Utility.Log(' '.join(argList))
+        _logInfo(' '.join(argList))
         ret = subprocess.call(argList)
         if ret != 0:
-            Utility.Log('execute gradle task failed with retcode: %s' %ret, ret)
+            _logInfo('execute gradle task failed with retcode: %s' %ret, ret)
     except:
-        Utility.Log('package failed with excpetion', 1)
+        _logInfo('package failed with excpetion', 1)
     pass
 
-def PackageiOSCmd(args):
+def _packageiOSCmd(args):
     if args.winOS != False:
-        Utility.Log('package iOS only support on MacOS', 1)
+        _logInfo('package iOS only support on MacOS', 1)
 
-    projPath = Utility.FullPath(args.projPath)
+    projPath = _fullPath(args.projPath)
     buildType = 'Debug' if args.debug else 'Release'
     buildTarget = args.target
     buildSdk = str(args.sdk).lower()
-    pkgOutFile = Utility.FullPath(args.outFile) if args.outFile else projPath + '.ipa'
+    pkgOutFile = _fullPath(args.outFile) if args.outFile else projPath + '.ipa'
     productName = args.proName
     provProfile = None
     if args.provFile:
-        provFile = Utility.FullPath(args.provFile)
+        provFile = _fullPath(args.provFile)
         if os.path.isfile(provFile):
             try:
                 argList = ['security', 'cms', '-D', '-i', provFile]
-                Utility.Log(' '.join(argList))
+                _logInfo(' '.join(argList))
                 provStr = subprocess.check_output(argList)
                 prov = plistlib.readPlistFromString(provStr)
                 provProfile = prov['UUID']
                 if productName == None:
                     productName = prov['Entitlements']['application-identifier'].split('.')[-1]
             except:
-                Utility.Log('get key values from provision file failed: %s' %provFile, 1)
+                _logInfo('get key values from provision file failed: %s' %provFile, 1)
         else:
-            Utility.Log('provision file not exists: %s' %provFile, 1)
+            _logInfo('provision file not exists: %s' %provFile, 1)
 
     if provProfile == None:
-        Utility.Log('provision profile not found', 1)
+        _logInfo('provision profile not found', 1)
     if not os.path.isdir(projPath):
-        Utility.Log('project directory not exist: %s' %projPath, 1)
+        _logInfo('project directory not exist: %s' %projPath, 1)
 
-    Utility.Log('===Package iOS===')
-    Utility.Log('projectPath:     %s' %projPath)
-    Utility.Log('buildType:       %s' %buildType)
-    Utility.Log('buildTarget:     %s' %buildTarget)
-    Utility.Log('buildSdk:        %s' %buildSdk)
-    Utility.Log('provision:       %s' %provProfile)
-    Utility.Log('productName:     %s' %productName)
-    Utility.Log('pkgOutFile:      %s' %pkgOutFile)
-    Utility.Log('')
+    _logInfo('===Package iOS===')
+    _logInfo('projectPath:     %s' %projPath)
+    _logInfo('buildType:       %s' %buildType)
+    _logInfo('buildTarget:     %s' %buildTarget)
+    _logInfo('buildSdk:        %s' %buildSdk)
+    _logInfo('provision:       %s' %provProfile)
+    _logInfo('productName:     %s' %productName)
+    _logInfo('pkgOutFile:      %s' %pkgOutFile)
+    _logInfo('')
 
     #try resolve the 'User Interaction Is Not Allowed' problem when run from shell
     if args.keychain:
-        argList = ['security', 'unlock-keychain', '-p', args.keychain[1], Utility.FullPath(args.keychain[0])]
-        Utility.Log(' '.join(argList))
+        argList = ['security', 'unlock-keychain', '-p', args.keychain[1], _fullPath(args.keychain[0])]
+        _logInfo(' '.join(argList))
         ret = subprocess.call(argList)
         if ret != 0:
-            Utility.Log('unlock keychain failed with retcode: %s' %ret)
+            _logInfo('unlock keychain failed with retcode: %s' %ret)
 
     argList = ['xcodebuild',
                '-project', os.path.join(projPath, '%s.xcodeproj' %buildTarget),
                'clean',
                '-target', buildTarget,
                '-configuration', buildType]
-    Utility.Log(' '.join(argList))
+    _logInfo(' '.join(argList))
     ret = subprocess.call(argList)
     if ret != 0:
-        Utility.Log('execute clean failed with retcode: %s' %ret, ret)
+        _logInfo('execute clean failed with retcode: %s' %ret, ret)
 
     argList = ['xcodebuild',
                '-project', os.path.join(projPath, '%s.xcodeproj' %buildTarget),
@@ -372,15 +372,15 @@ def PackageiOSCmd(args):
                         'COPY_PHASE_STRIP=YES'])
     if args.opt:
         argList.extend(args.opt)
-    Utility.Log(' '.join(argList))
+    _logInfo(' '.join(argList))
     ret = subprocess.call(argList)
     if ret != 0:
-        Utility.Log('execute xcodebuild failed with retcode: %s' %ret, ret)
+        _logInfo('execute xcodebuild failed with retcode: %s' %ret, ret)
     
     #how to get archiveBaseName or bundle identifier?
     buildOutFile = os.path.join(projPath, 'build/%s-iphoneos/%s.app' %(buildType, productName))
     if not os.path.exists(buildOutFile):
-        Utility.Log('build output file not exist: %s' %buildOutFile, 1)
+        _logInfo('build output file not exist: %s' %buildOutFile, 1)
     pkgFileDir = os.path.dirname(pkgOutFile)
     if not os.path.exists(pkgFileDir):
         os.makedirs(pkgFileDir)
@@ -393,72 +393,39 @@ def PackageiOSCmd(args):
                #'--sign', signId,
                #'--embed', provFile
                ]
-    Utility.Log(' '.join(argList))
+    _logInfo(' '.join(argList))
     ret = subprocess.call(argList)
     if ret != 0:
-        Utility.Log('execute xcrun failed with retcode: %s' %ret, ret)
+        _logInfo('execute xcrun failed with retcode: %s' %ret, ret)
     pass
 
-def CopyCmd(args):
-    src = Utility.FullPath(args.src)
-    dst = Utility.FullPath(args.dst)
+def _copyCmd(args):
+    src = _fullPath(args.src)
+    dst = _fullPath(args.dst)
 
-    Utility.Log('===Copy===')
-    Utility.Log('src:     %s' %src)
-    Utility.Log('dst:     %s' %dst)
-    Utility.Log('append:  %s' %args.append)
-    Utility.Log('stat:    %s' %args.stat)
+    _logInfo('===Copy===')
+    _logInfo('src:     %s' %src)
+    _logInfo('dst:     %s' %dst)
+    _logInfo('append:  %s' %args.append)
+    _logInfo('stat:    %s' %args.stat)
 
-    Copy(src, dst, args.append, args.stat)
+    _copy(src, dst, args.append, args.stat)
     pass
 
-def DelCmd(args):
-    path = Utility.FullPath(args.src)
+def _delCmd(args):
+    path = _fullPath(args.src)
 
-    Utility.Log('===Delete===')
-    Utility.Log('path:    %s' %path)
+    _logInfo('===Delete===')
+    _logInfo('path:    %s' %path)
     if args.sfx:
         for suffix in args.sfx:
-            Utility.Log('path:    %s%s' %(path, suffix))
+            _logInfo('path:    %s%s' %(path, suffix))
     
-    Del(path, args.sfx)
+    _del(path, args.sfx)
     pass
 
-def Run(args):
-    #workspace home
-    args.homePath = os.path.dirname(sys.argv[0])
-
-    #initialize logging
-    args.ulog = Utility.FullPath(args.ulog)
-    args.log = Utility.FullPath(args.log) 
-    if args.log:
-        dir = os.path.dirname(args.log)
-        if not os.path.exists(dir):
-            os.makedirs(dir)
-    Utility.InitLogging(args.homePath, args.log, args.wmode, args.ulog)
-
-    #unity home and executable
-    args.unity = Utility.FullPath(args.unity) if args.unity else os.environ.get('UNITY_HOME')
-    if args.unity and os.path.exists(args.unity):
-        if sys.platform.startswith('win32'):
-            args.winOS = True
-            args.unityExe = os.path.join(args.unity, 'Unity.exe')
-        elif sys.platform.startswith('darwin'):
-            args.winOS = False
-            args.unityExe = os.path.join(args.unity, 'Unity.app/Contents/MacOS/Unity')
-        else:
-            Utility.Log('Unsupported platform: %s' %sys.platform, 1)
-        
-        if args.unityExe == None or os.path.exists(args.unityExe) == False:
-            Utility.Log('Unity executable not found at: %s' %args.unityExe, 1)
-    else:
-        Utility.Log('Unity home path not found, use -unity argument or define it with an environment variable UNITY_HOME', 1)
-
-    args.func(args)
-    pass
-
-#parse arguments
-def ParseArgs(explicitArgs = None):
+#commandline argument parse
+def _parse_args(explicitArgs = None):
     parser = argparse.ArgumentParser(description = 'build util for Unity')
     parser.add_argument('-log', help = 'build util log file path')
     parser.add_argument('-wmode', action = 'store_true', help = 'use w mode to open log file, by default the mode is a')
@@ -474,7 +441,7 @@ def ParseArgs(explicitArgs = None):
                         help = 'method name to invoke, [Assembly:(Optional)]Namespace.SubNamespace.Class+NestedClass.Method')
     invoke.add_argument('args', nargs = '*', help = 'method arguments, support types: primitive / string / enum')
     invoke.add_argument('-next', action = 'append', nargs = '+', help = 'next method and arguments to invoke')
-    invoke.set_defaults(func = InvokeCmd)
+    invoke.set_defaults(func = _invokeCmd)
 
     build = subparsers.add_parser('build', help='build player for unity project')
     build.add_argument('projPath', help = 'target unity project path')
@@ -486,7 +453,7 @@ def ParseArgs(explicitArgs = None):
     build.add_argument('-dev', action = 'store_true', help = 'enable unity development build, with debug symbols and internal profiler')
     build.add_argument('-dph', action = 'store_true',
                        help = 'unity export android project to outPath/{productName}/{exportProj} by default, without this option, project will be export to outPath/{exportProj}')
-    build.set_defaults(func = BuildCmd)
+    build.set_defaults(func = _buildCmd)
 
     packandroid = subparsers.add_parser('packandroid', help = 'pacakge android project with gralde')
     packandroid.add_argument('projPath', help = 'target project path')
@@ -501,7 +468,7 @@ def ParseArgs(explicitArgs = None):
                              help = '''additional gradle build properties,
                              targetProjDir={projPath}, buildDir={projPath/build}, archivesBaseName={dirName(projPath)} by default''')
     packandroid.add_argument('-ndp', action = 'store_true', help = 'does not add default build properties')
-    packandroid.set_defaults(func = PackageAndroidCmd)
+    packandroid.set_defaults(func = _packageAndroidCmd)
 
     packios = subparsers.add_parser('packios', help = 'pacakge iOS project with xCode')
     packios.add_argument('projPath', help = 'target project path')
@@ -520,7 +487,7 @@ def ParseArgs(explicitArgs = None):
                      PRODUCT_NAME={proName} DEPLOYMENT_POSTPROCESSING=YES, STRIP_INSTALLED_PRODUCT=YES, SEPARATE_STRIP=YES, COPY_PHASE_STRIP=YES by default.
                      check https://developer.apple.com/library/mac/documentation/DeveloperTools/Reference/XcodeBuildSettingRef for more information''')
     packios.add_argument('-ndo', action = 'store_true', help = 'does not add default build options')
-    packios.set_defaults(func = PackageiOSCmd)
+    packios.set_defaults(func = _packageiOSCmd)
 
     copy = subparsers.add_parser('copy', help = 'copy file or directory')
     copy.add_argument('src', help = 'path to copy from')
@@ -529,14 +496,47 @@ def ParseArgs(explicitArgs = None):
                       help = 'append files from src to dst instead of delete dst before copy, only take effect when copy directory')
     copy.add_argument('-stat', default = False, action = 'store_true',
                       help = 'copy the permission bits, last access time, last modification time, and flags')
-    copy.set_defaults(func = CopyCmd)
+    copy.set_defaults(func = _copyCmd)
 
     delete = subparsers.add_parser('del', help = 'delete file or directory')
     delete.add_argument('src', help = 'path to delete')
     delete.add_argument('-sfx', nargs = '*', help = 'also delete path (src + suffix), useful for unity .meta files')
-    delete.set_defaults(func = DelCmd)
+    delete.set_defaults(func = _delCmd)
 
     return parser.parse_args(explicitArgs)
+    pass
+
+def _run(args):
+    #workspace home
+    args.homePath = os.path.dirname(sys.argv[0])
+
+    #initialize logging
+    args.ulog = _fullPath(args.ulog)
+    args.log = _fullPath(args.log) 
+    if args.log:
+        dir = os.path.dirname(args.log)
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+    _initLogging(args.homePath, args.log, args.wmode, args.ulog)
+
+    #unity home and executable
+    args.unity = _fullPath(args.unity) if args.unity else os.environ.get('UNITY_HOME')
+    if args.unity and os.path.exists(args.unity):
+        if sys.platform.startswith('win32'):
+            args.winOS = True
+            args.unityExe = os.path.join(args.unity, 'Unity.exe')
+        elif sys.platform.startswith('darwin'):
+            args.winOS = False
+            args.unityExe = os.path.join(args.unity, 'Unity.app/Contents/MacOS/Unity')
+        else:
+            _logInfo('Unsupported platform: %s' %sys.platform, 1)
+        
+        if args.unityExe == None or os.path.exists(args.unityExe) == False:
+            _logInfo('Unity executable not found at: %s' %args.unityExe, 1)
+    else:
+        _logInfo('Unity home path not found, use -unity argument or define it with an environment variable UNITY_HOME', 1)
+
+    args.func(args)
     pass
 
 #script interface
@@ -547,23 +547,7 @@ PACK_IOS = 'packios'
 COPY = 'copy'
 DEL = 'del'
 
-def runTask(task, mapargs, **kwargs):
-    '''
-    argument names
-    common:         log, wmode, ulog, unity, nobatch, noquit
-    invoke:         projPath, calls
-    build:          projPath, buildTarget, outPath, opt, exp, dev, dph
-    packandroid:    projPath, bf, task, var, pfx, sfx, prop, ndp
-    packios:        projPath, provFile, outFile, proName, debug, target, sdk, keychain, opt, ndo
-    copy:           src, dst, append, stat
-    del:            src, sfx
-    '''
-    parser = _argparser(mapargs, cmd = task)
-    parser.update(kwargs)
-    explictArgs = parser.parse()
-    Run(ParseArgs(explictArgs))
-
-class _argparser(dict):
+class _TaskArgParser(dict):
     def parse(self):
         cmd = self.__common()
         if cmd == INVOKE:
@@ -651,9 +635,9 @@ class _argparser(dict):
     def __init__(self, o, **kwargs):
         self.__arglist = []
         if o:
-            return super(_argparser, self).__init__(o, **kwargs)
+            return super(_TaskArgParser, self).__init__(o, **kwargs)
         else:
-            return super(_argparser, self).__init__(kwargs)
+            return super(_TaskArgParser, self).__init__(kwargs)
 
     def __getattr__(self, arg):
         return self[arg] if arg in self else None
@@ -677,6 +661,23 @@ class _argparser(dict):
             self.__append(k)
     pass
 
+def runTask(task, mapargs, **kwargs):
+    '''
+    argument names
+    common:         log, wmode, ulog, unity, nobatch, noquit
+    invoke:         projPath, calls
+    build:          projPath, buildTarget, outPath, opt, exp, dev, dph
+    packandroid:    projPath, bf, task, var, pfx, sfx, prop, ndp
+    packios:        projPath, provFile, outFile, proName, debug, target, sdk, keychain, opt, ndo
+    copy:           src, dst, append, stat
+    del:            src, sfx
+    '''
+    parser = _TaskArgParser(mapargs, cmd = task)
+    parser.update(kwargs)
+    explictArgs = parser.parse()
+    _run(_parse_args(explictArgs))
+    pass
+
 if __name__ == '__main__':
-    Run(ParseArgs())
+    _run(_parse_args())
     pass
