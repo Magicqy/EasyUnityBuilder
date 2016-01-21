@@ -539,6 +539,144 @@ def ParseArgs(explicitArgs = None):
     return parser.parse_args(explicitArgs)
     pass
 
+#script interface
+INVOKE = 'invoke'
+BUILD = 'build'
+PACK_ANDROID = 'packandroid'
+PACK_IOS = 'packios'
+COPY = 'copy'
+DEL = 'del'
+
+def runTask(task, mapargs, **kwargs):
+    '''
+    argument names
+    common:         log, wmode, ulog, unity, nobatch, noquit
+    invoke:         projPath, calls
+    build:          projPath, buildTarget, outPath, opt, exp, dev, dph
+    packandroid:    projPath, bf, task, var, pfx, sfx, prop, ndp
+    packios:        projPath, provFile, outFile, proName, debug, target, sdk, keychain, opt, ndo
+    copy:           src, dst, append, stat
+    del:            src, sfx
+    '''
+    parser = _argparser(mapargs, cmd = task)
+    parser.update(kwargs)
+    explictArgs = parser.parse()
+    Run(ParseArgs(explictArgs))
+
+class _argparser(dict):
+    def parse(self):
+        cmd = self.__common()
+        if cmd == INVOKE:
+            self.__invoke()
+        elif cmd == BUILD:
+            self.__build()
+        elif cmd == PACK_ANDROID:
+            self.__packandroid()
+        elif cmd == PACK_IOS:
+            self.__packios()
+        elif cmd == COPY:
+            self.__copy()
+        elif cmd == DEL:
+            self.__del()
+        return self.__arglist
+
+    def __common(self):
+        self.__appends('-log', self.log)
+        self.__appendb('-wmode', self.wmode)
+        self.__appends('-unity', self.unity)
+        self.__appends('-ulog', self.ulog)
+        self.__appendb('-nobatch', self.nobatch)
+        self.__appendb('-noquit', self.noquit)
+        return self.cmd
+
+    def __invoke(self):
+        self.__append(self.cmd)
+        self.__append(self.projPath)
+        calls = self.calls
+        if calls:
+            isfirst = True
+            for c in calls:
+                if isfirst:
+                    isfirst = False
+                else:
+                    self.__append('-next')
+                self.__extend(c)
+
+    def __build(self):
+        self.__append(self.cmd)
+        self.__append(self.projPath)
+        self.__append(self.buildTarget)
+        self.__append(self.outPath)
+        self.__appends('-opt', self.opt)
+        self.__appendb('-exp', self.exp)
+        self.__appendb('-dev', self.dev)
+        self.__appendb('-dph', self.dph)
+
+    def __packandroid(self):
+        self.__append(self.cmd)
+        self.__append(self.projPath)
+        self.__appends('-bf', self.bf)
+        if self.task:
+            self.__appends('-task', self.task)
+        elif self.var:
+            self.__appends('-var', self.var)
+            self.__appends('-pfx', self.pfx)
+            self.__appends('-sfx', self.sfx)
+        self.__appends('-prop', self.prop)
+        self.__appendb('-ndp', self.ndp)
+
+    def __packios(self):
+        self.__append(self.cmd)
+        self.__append(self.projPath)
+        self.__appends('-provFile', self.provFile)
+        self.__appends('-outFile', self.outFile)
+        self.__appends('-proName', self.proName)
+        self.__appendb('-debug', self.debug)
+        self.__appends('-target', self.target)
+        self.__appends('-sdk', self.sdk)
+        self.__appends('-keychain', self.keychain)
+        self.__appends('-opt', self.opt)
+        self.__appends('-ndo', self.ndo)
+
+    def __copy(self):
+        self.__append(self.src)
+        self.__append(self.dst)
+        self.__appendb('-append', self.append)
+        self.__appendb('-stat', self.stat)
+
+    def __del(self):
+        self.__append(self.src)
+        self.__appends('-sfx', self.sfx)
+
+    def __init__(self, o, **kwargs):
+        self.__arglist = []
+        if o:
+            return super(_argparser, self).__init__(o, **kwargs)
+        else:
+            return super(_argparser, self).__init__(kwargs)
+
+    def __getattr__(self, arg):
+        return self[arg] if arg in self else None
+
+    def __append(self, arg):
+        if arg: self.__arglist.append(arg)
+
+    def __extend(self, args):
+        if args: self.__arglist.extend(args)
+
+    def __appends(self, k, v):
+        if k and v:
+            self.__append(k)
+            if isinstance(v, list):
+                self.__extend(v)
+            else:
+                self.__append(v)
+
+    def __appendb(self, k, v):
+        if k and v:
+            self.__append(k)
+    pass
+
 if __name__ == '__main__':
     Run(ParseArgs())
     pass
