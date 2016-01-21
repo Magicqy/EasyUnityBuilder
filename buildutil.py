@@ -53,7 +53,10 @@ class Utility:
     @staticmethod
     def InitLogging(homePath, logFile, logFileMode, unityLogFile):
         import logging
-        logger = Utility.logger = logging.getLogger()
+        logger = logging.getLogger()
+        for hd in logger.handlers:
+            hd.close()
+        del logger.handlers[:]
         logger.setLevel(logging.INFO)
         logger.addHandler(logging.StreamHandler(sys.stdout))
         if logFile:
@@ -66,8 +69,10 @@ class Utility:
 
     @staticmethod
     def Log(msg, exitWithCode = None):
-        Utility.logger.info(msg)
+        import logging
+        logging.info(msg)
         if exitWithCode != None:
+            logging.shutdown()
             sys.exit(exitWithCode)
         pass
 
@@ -101,7 +106,7 @@ def Cleanup(projPath):
     if path and os.path.exists(path):
         logFile = open(path)
         try:
-            Utility.logger.info(logFile.read())
+            Utility.Log(logFile.read())
         finally:
             logFile.close()
             Del(path)
