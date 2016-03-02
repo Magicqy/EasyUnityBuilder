@@ -12,7 +12,7 @@ import os, sys, shutil, datetime, argparse, subprocess, plistlib
 #util methods
 class _BuildTarget:
     Android = 'Android'
-    iPhone = 'iPhone'
+    iOS = 'iOS'
     StandaloneWindows = 'StandaloneWindows'
     StandaloneWindows64 = 'StandaloneWindows64'
     StandaloneOSXIntel = 'StandaloneOSXIntel'
@@ -20,7 +20,7 @@ class _BuildTarget:
     
     _switch = {
         'android' : Android,
-        'ios' : iPhone,
+        'ios' : iOS,
         'win' : StandaloneWindows,
         'win64' : StandaloneWindows64,
         'osx' : StandaloneOSXIntel,
@@ -80,13 +80,13 @@ def _correctExt(outPath, buildTarget, buildOpts):
     root, ext = os.path.splitext(outPath)
     noexp = buildOpts.find(_BuildOptions.AcceptExternalModificationsToPlayer) < 0
     if buildTarget == _BuildTarget.Android:
-        return root + '.apk' if noexp and len(ext) == 0 else ext
-    elif buildTarget == _BuildTarget.iPhone:
-        return root + ext
+        return root + '.apk' if noexp and len(ext) == 0 else outPath
+    elif buildTarget == _BuildTarget.iOS:
+        return outPath
     elif buildTarget == _BuildTarget.StandaloneWindows or ext == _BuildTarget.StandaloneWindows64:
-        return root + '/bin.exe' if len(ext) == 0 else ext
+        return root + '/bin.exe' if len(ext) == 0 else outPath
     elif buildTarget == _BuildTarget.StandaloneOSXIntel or ext == _BuildTarget.StandaloneOSXIntel64:
-        return root + '.app' if len(ext) == 0 else ext
+        return root + '.app' if len(ext) == 0 else outPath
     else:
         _logInfo('invalid build target:%s' %buildTarget)
         return root + ext
