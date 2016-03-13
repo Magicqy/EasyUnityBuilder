@@ -251,7 +251,7 @@ def _invokeCmd(args):
 def _packageAndroidCmd(args):
     projPath = _fullPath(args.projPath)
     gradlePath = os.path.join(args.homePath, 'gradlew')
-    buildFile = _fullPath(args.bf) if args.bf else os.path.join(projPath, 'build.gradle')
+    buildFile = _fullPath(args.buildFile) if args.buildFile else os.path.join(projPath, 'build.gradle')
     taskPrefix = args.pfx if args.pfx else ''
     taskSuffix = '%s%s' %(args.sfx[0].upper(), args.sfx[1:]) if args.sfx else ''
 
@@ -457,7 +457,7 @@ def _parse_args(explicitArgs = None):
 
     packandroid = subparsers.add_parser('packandroid', help = 'pacakge android project with gralde')
     packandroid.add_argument('projPath', help = 'target project path')
-    packandroid.add_argument('-bf', help = 'specifies the build file')
+    packandroid.add_argument('-buildFile', help = 'specifies the build file')
     group = packandroid.add_mutually_exclusive_group(required = True)
     group.add_argument('-task', nargs = '+', help = 'full task names to execute')
     group.add_argument('-var', nargs = '+',
@@ -599,7 +599,7 @@ class _TaskArgParser(dict):
     def __packandroid(self):
         self.__append(self.cmd)
         self.__append(self.projPath)
-        self.__appends('-bf', self.bf)
+        self.__appends('-buildFile', self.buildFile)
         if self.task:
             self.__appends('-task', self.task)
         elif self.var:
@@ -661,7 +661,7 @@ class _TaskArgParser(dict):
             self.__append(k)
     pass
 
-def runTask(task, shared_args, **kwargs):
+def runTask(taskName, shared_args, **kwargs):
     '''
     task list:
     INVOKE, BUILD, PACK_ANDROID, PACK_IOS, COPY, DEL
@@ -670,12 +670,12 @@ def runTask(task, shared_args, **kwargs):
     shared:         log, wmode, ulog, unity, nobatch, noquit
     invoke:         projPath, calls
     build:          projPath, buildTarget, outPath, opt, exp, dev, dph
-    packandroid:    projPath, bf, task, var, pfx, sfx, prop, ndp
+    packandroid:    projPath, buildFile, task, var, pfx, sfx, prop, ndp
     packios:        projPath, provFile, outFile, proName, debug, target, sdk, keychain, opt, ndo
     copy:           src, dst, append, stat
     del:            src, sfx
     '''
-    parser = _TaskArgParser(shared_args, cmd = task)
+    parser = _TaskArgParser(shared_args, cmd = taskName)
     parser.update(kwargs)
     explictArgs = parser.parse()
     _run(_parse_args(explictArgs))
