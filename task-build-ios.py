@@ -6,8 +6,8 @@ start = time.time()
 
 UNITY_PROJ = 'TestProject'
 BUILD_PATH = os.path.join(UNITY_PROJ, 'Builds')
-XCODE_PROJ = os.path.join(BUILD_PATH, 'xproj')
-OUT_FILE = os.path.join(BUILD_PATH, 'output.ipa')
+EXPORT_PROJ = os.path.join(BUILD_PATH, 'ios-proj')
+OUT_FILE = os.path.join(BUILD_PATH, 'ios-output.ipa')
 
 BUNDLE_ID = 'com.test.proj'
 PROV_FILE = '{mobileprovision file path}'
@@ -25,10 +25,10 @@ utl.runTask(utl.INVOKE, shared_args,
 utl.runTask(utl.BUILD, shared_args,
     projPath = UNITY_PROJ,
     buildTarget = 'ios',
-    outPath = XCODE_PROJ)
+    outPath = EXPORT_PROJ)
     
 utl.runTask(utl.PACK_IOS, shared_args,
-    projPath = XCODE_PROJ,
+    projPath = EXPORT_PROJ,
     outFile = OUT_FILE,
     provFile = PROV_FILE,
     keychain = KEY_CHAIN)
