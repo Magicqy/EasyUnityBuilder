@@ -3,6 +3,7 @@ using UnityEditor;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using UnityEditor.iOS.Xcode;
 
 public static class BuildUtility
 {
@@ -51,6 +52,25 @@ public static class BuildUtility
         {
             Debug.LogError("There is no enabled scene found in build settings");
             EditorApplication.Exit(1);
+        }
+    }
+
+    public static void ModifyXCodeProject(BuildTarget buildTarget, string xprojPath)
+    {
+        if (buildTarget == BuildTarget.iOS)
+        {
+            string projFilePath = Path.Combine(xprojPath, "Unity-iPhone.xcodeproj/project.pbxproj");
+
+            if (File.Exists(projFilePath))
+            {
+                PBXProject pbxProject = new PBXProject();
+                pbxProject.ReadFromFile(projFilePath);
+
+                string target = pbxProject.TargetGuidByName("Unity-iPhone");
+                pbxProject.SetBuildProperty(target, "ENABLE_BITCODE", "NO");
+
+                pbxProject.WriteToFile(projFilePath);
+            }
         }
     }
 }
