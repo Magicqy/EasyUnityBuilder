@@ -308,7 +308,12 @@ def _packageiOSCmd(args):
     buildSdk = str(args.sdk).lower()
     pkgOutFile = _fullPath(args.outFile) if args.outFile else projPath + '.ipa'
     productName = args.proName
-    provProfile = None
+    teamId = None
+    teamName = None
+    bundleId = None
+    provName = None
+    provUUID = None
+    provType = None
     if args.provFile:
         provFile = _fullPath(args.provFile)
         if os.path.isfile(provFile):
@@ -316,16 +321,36 @@ def _packageiOSCmd(args):
                 argList = ['security', 'cms', '-D', '-i', provFile]
                 _logInfo(' '.join(argList))
                 provStr = subprocess.check_output(argList)
-                prov = plistlib.readPlistFromString(provStr)
-                provProfile = prov['UUID']
+                provObj = plistlib.readPlistFromString(provStr)
+
+                #these key names may change when Apple update the plist format of mobileprovision file
+                #enterprise,    valid for all devices, distribution profile
+                #app-store,     valid only for upload to appstore, distribution profile
+                #development,   valid for limited devices, development profile
+                #ad-hoc,        valid for limited devices, distribution profile 
+                validForAll = provObj.get('ProvisionsAllDevices')
+                validForLimited = provObj.get('ProvisionedDevices')
+                if validForAll:
+                    provType = 'enterprise'
+                elif validForLimited:
+                    provType = 'development'
+                    #TODO how to recognize ad-hoc profile?
+                else:
+                    provType = 'app-store'
+
+                teamId = provObj['Entitlements']['com.apple.developer.team-identifier']
+                teamName = 'iPhone Developer: ' if provType == 'development' else 'iPhone Distribution: ' + provObj['TeamName']
+                bundleId = provObj['Entitlements']['application-identifier'][len(teamId) + 1:]
+                provName = provObj['Name']
+                provUUID = provObj['UUID']
                 if productName == None:
-                    productName = prov['Entitlements']['application-identifier'].split('.')[-1]
+                    productName = provObj['Entitlements']['application-identifier'].split('.')[-1]
             except:
                 _logInfo('get key values from provision file failed: %s' %provFile, 1)
         else:
             _logInfo('provision file not exists: %s' %provFile, 1)
 
-    if provProfile == None:
+    if provUUID == None:
         _logInfo('provision profile not found', 1)
     if not os.path.isdir(projPath):
         _logInfo('project directory not exist: %s' %projPath, 1)
@@ -335,12 +360,16 @@ def _packageiOSCmd(args):
     _logInfo('buildType:       %s' %buildType)
     _logInfo('buildTarget:     %s' %buildTarget)
     _logInfo('buildSdk:        %s' %buildSdk)
-    _logInfo('provision:       %s' %provProfile)
+    _logInfo('bundleId:        %s' %bundleId)
+    _logInfo('provision name:  %s' %provName)
+    _logInfo('provision uuid:  %s' %provUUID)
     _logInfo('productName:     %s' %productName)
     _logInfo('pkgOutFile:      %s' %pkgOutFile)
     _logInfo('')
 
     #try resolve the 'User Interaction Is Not Allowed' problem when run from shell
+    #need build manully once and click 'Always Allow' on the keychain unlock confirm dialog
+    #when your project takes a very long time to build, increase auto-lock duration on keychain settings
     if args.keychain:
         argList = ['security', 'unlock-keychain', '-p', args.keychain[1], _fullPath(args.keychain[0])]
         _logInfo(' '.join(argList))
@@ -350,54 +379,91 @@ def _packageiOSCmd(args):
 
     argList = ['xcodebuild',
                '-project', os.path.join(projPath, '%s.xcodeproj' %buildTarget),
-               'clean',
                '-target', buildTarget,
-               '-configuration', buildType]
+               '-configuration', buildType,
+               'clean']
     _logInfo(' '.join(argList))
     ret = subprocess.call(argList)
     if ret != 0:
         _logInfo('execute clean failed with retcode: %s' %ret, ret)
 
+    buildOutFile = os.path.join(projPath, 'build/%s.xcarchive' %buildTarget)
+    #the default name of scheme should be the same as build target
+    buildScheme = buildTarget
     argList = ['xcodebuild',
                '-project', os.path.join(projPath, '%s.xcodeproj' %buildTarget),
                '-sdk', buildSdk,
-               '-target', buildTarget,
+               '-scheme', buildScheme,
                '-configuration', buildType,
-               'PROVISIONING_PROFILE=%s' %provProfile,
+               'PROVISIONING_PROFILE=%s' %provUUID,
+               'CODE_SIGN_IDENTITY=%s' %teamName,
                'PRODUCT_NAME=%s' %productName]
     if not args.ndo:
         argList.extend(['DEPLOYMENT_POSTPROCESSING=YES',
                         'STRIP_INSTALLED_PRODUCT=YES',
                         'SEPARATE_STRIP=YES',
                         'COPY_PHASE_STRIP=YES'])
+    argList.extend(['-archivePath', buildOutFile, 'archive'])
+
     if args.opt:
         argList.extend(args.opt)
     _logInfo(' '.join(argList))
     ret = subprocess.call(argList)
     if ret != 0:
         _logInfo('execute xcodebuild failed with retcode: %s' %ret, ret)
-    
-    #how to get archiveBaseName or bundle identifier?
-    buildOutFile = os.path.join(projPath, 'build/%s-iphoneos/%s.app' %(buildType, productName))
+    #check if build succeed
     if not os.path.exists(buildOutFile):
         _logInfo('build output file not exist: %s' %buildOutFile, 1)
-    pkgFileDir = os.path.dirname(pkgOutFile)
-    if not os.path.exists(pkgFileDir):
-        os.makedirs(pkgFileDir)
 
-    argList = ['/usr/bin/xcrun',
-               '-sdk', buildSdk,
-               'PackageApplication',
-               '-v', buildOutFile,
-               '-o', pkgOutFile
-               #'--sign', signId,
-               #'--embed', provFile
-               ]
+    exportOptFilePath = os.path.join(os.path.dirname(buildOutFile), '%s.plist' %buildTarget)
+    try:
+        optFile = open(exportOptFilePath, 'w+')
+        optFile.write("""
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>method</key>
+        <string>%s</string>
+        <key>teamID</key>
+        <string>%s</string>
+        <key>compileBitcode</key>
+        <false/>
+        <key>signingCertificate</key>
+        <string>%s</string>
+        <key>provisioningProfiles</key>
+        <dict>
+            <key>%s</key>
+            <string>%s</string>
+            <key>uploadSymbols</key>
+            <false/>
+        </dict>
+    </dict>
+</plist>
+""" %(provType, teamId, teamName, bundleId, provName))
+        optFile.close()
+    except:
+        _logInfo('create exportOptionsPlist failed', 1)
+
+    exportPath = os.path.dirname(buildOutFile)
+    argList = ['xcodebuild',
+               '-exportArchive',
+               '-archivePath', buildOutFile,
+               '-exportPath', exportPath,
+               '-configuration', buildType,
+               '-exportOptionsPlist', exportOptFilePath]
+
     _logInfo(' '.join(argList))
     ret = subprocess.call(argList)
     if ret != 0:
         _logInfo('execute xcrun failed with retcode: %s' %ret, ret)
     pass
+    #check if export succeed
+    exportFile = os.path.join(exportPath, "%s.ipa" %buildTarget)
+    if not os.path.exists(exportFile):
+        _logInfo('export output file not exist: %s' %exportFile, 1)
+    #copy to final output path
+    _copy(exportFile, pkgOutFile)
 
 def _copyCmd(args):
     src = _fullPath(args.src)
@@ -480,7 +546,7 @@ def _parse_args(explicitArgs = None):
     packios.add_argument('-sdk', default = 'iphoneos', help = 'build sdk version, latest iphoneos by default')
     packios.add_argument('-keychain', nargs = 2,
                      help = '''keychain path and passowrd.
-                     unlock keychain (usually ~/Library/Keychains/login.keychain) to workaround for "User Interaction Is Not Allowed".
+                     unlock keychain before build (usually ~/Library/Keychains/login.keychain) to workaround for "User Interaction Is Not Allowed" problem.
                      click 'Always Allow' button at first time it ask for keychain access''')
     packios.add_argument('-opt', nargs = '*',
                      help = '''additional build options.
