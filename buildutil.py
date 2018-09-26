@@ -191,14 +191,14 @@ class _Invoker:
         pass
          
     def _setup(self, projPath, homePath):
-        _copy(os.path.join(homePath, 'BuildUtility/BuildUtility.cs'),
-              os.path.join(projPath, 'Assets/Editor/_BuildUtility_/BuildUtility.cs'))
-        _copy(os.path.join(homePath, 'BuildUtility/Invoker/Invoker.cs'),
-              os.path.join(projPath, 'Assets/Editor/_BuildUtility_/Invoker.cs'))
+        _copy(os.path.join(homePath, 'EditorScripts/BuildUtility.cs'),
+              os.path.join(projPath, 'Assets/__UnityBuildUtility__/Editor/BuildUtility.cs'))
+        _copy(os.path.join(homePath, 'EditorScripts/Invoker.cs'),
+              os.path.join(projPath, 'Assets/__UnityBuildUtility__/Editor/Invoker.cs'))
         pass
 
     def _cleanup(self, projPath):
-        _del(os.path.join(projPath, 'Assets/Editor/_BuildUtility_'), ['.meta'])
+        _del(os.path.join(projPath, 'Assets/__UnityBuildUtility__'), ['.meta'])
         path = self.invokeLogFile
         if path and os.path.exists(path):
             logFile = open(path)
