@@ -1,9 +1,10 @@
-﻿using UnityEngine;
-using UnityEditor;
-using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
+using UnityEngine;
+using UnityEditor;
+#if UNITY_IOS
 using UnityEditor.iOS.Xcode;
+#endif
 
 public static class BuildUtility
 {
@@ -41,10 +42,14 @@ public static class BuildUtility
         }
         if (levels.Count > 0)
         {
-            var error = BuildPipeline.BuildPlayer(levels.ToArray(), outPath, target, opt);
-            if (!string.IsNullOrEmpty(error))
+            var result = BuildPipeline.BuildPlayer(levels.ToArray(), outPath, target, opt);
+#if UNITY_2017_1_OR_NEWER
+            if (result.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded)
+#else
+            if (!string.IsNullOrEmpty(result))
+#endif
             {
-                Debug.LogError(error);
+                Debug.LogError(result.ToString());
                 EditorApplication.Exit(1);
             }
         }
@@ -55,6 +60,7 @@ public static class BuildUtility
         }
     }
 
+#if UNITY_IOS
     public static void ModifyXCodeProject(BuildTarget buildTarget, string xprojPath)
     {
         if (buildTarget == BuildTarget.iOS)
@@ -73,4 +79,5 @@ public static class BuildUtility
             }
         }
     }
+#endif
 }
