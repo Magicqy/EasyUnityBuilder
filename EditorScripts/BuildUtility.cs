@@ -60,6 +60,14 @@ public static class BuildUtility
         }
     }
 
+    //setting path for android external tools, fix path missing when run from jenkins
+    public static void SetAndroidSdkPath(string androdiSdkPath, string javaPath, string androidNdkPath)
+    {
+        EditorPrefs.SetString("AndroidSdkRoot", androdiSdkPath);
+        EditorPrefs.SetString("JdkPath", javaPath);
+        EditorPrefs.SetString("AndroidNdkRoot", androidNdkPath);
+    }
+
 #if UNITY_IOS
     public static void ModifyXCodeProject(BuildTarget buildTarget, string xprojPath)
     {
@@ -80,4 +88,5 @@ public static class BuildUtility
         }
     }
 #endif
+
 }
