@@ -2,35 +2,31 @@
  *  Invoke static method from command-line
  * 
  *  Usage:
- *      $UNITY_HOME/Unity.exe -projectPath $PROJECT_PATH -batchmode -quit -executeMethod Invoker.Invoke $METHOD $PARAMETERS [-next METHOD PARAMETERS]
+ *      $UNITY_HOME/Unity.exe -projectPath $PROJECT_PATH -batchmode -quit [-invokeLog $LOG_PATH] \
+ *          -executeMethod Invoker.InvokeCommandLine $METHOD $PARAMETERS [-next $METHOD $PARAMETERS]
  *      Use '-next' to chain the invoke.
- *      METHOD:     [Assembly:(Optional)]Namespace.SubNamespace.Class+NestedClass.Method
- *                  Check Type.AssemblyQualifiedName property for more information
- *                  Will search in all CSharp scripts in 'Assets' folder by default.
- *      PARAMETERS: string value seperated by space, support type: primitive / enum / string.
+ *      
+ *      METHOD:
+ *          [Assembly:(Optional)]Namespace.SubNamespace.Class+NestedClass.Method
+ *          Check Type.AssemblyQualifiedName property for more information
+ *          Type name startwith UnityEngine. or UnityEditor. will search in UnityEngine.dll and UnityEditor.dll.
+ *          Other type names will searched in all CSharp scripts in 'Assets' folder.
+ *          Provide type name with assembly name together can search in custom dlls.
+ *      
+ *      PARAMETERS: 
+ *          Support types: primitive value types(int, float, bool, etc.) / enum / string / array
+ *          Array parameter are identitfied by tag [$ARRAY_ITEMS], items are sperated by comma(,), eg: invoke method foo(int[] arr) with [4,6,8].
  *      
  *  Note:
  *      Exit Unity Editor application like call EditorApplication.Exit(1) in your invoke method will lost Invoker's log on MacOS,
- *      because finally block does not work when exception occurs, it's a bug of Mono on MacOS.
+ *      because finally block does not work when exception occurs, it's a bug of Mono on MacOS. (Tested in in Unity5.x)
  * 
  *  Examples Calls:
- *      Plugins.Hello
- *      PluginsEditor.Hello
- *      Normal.Hello
- *      Top.Sub.Class.Void
- *      Top.Sub.Class.Int32 123
- *      Top.Sub.Class.Enum iPhone
- *      Top.Sub.Class.Opt 9
- *      Top.Sub.Class.Opt 9 6
- *      Top.Sub.Class.Func 1
- *      Top.Sub.Class.Func true
- *      Top.Sub.Class.Array [1,2,3]
- *      Top.Sub.Class.IntProp 10 -next Top.Sub.Class.IntProp
- *      Top.Sub.Class+NestedClass.Hello
- *      UnityEngine:UnityEngine.Application.OpenURL www.unity3d.com
- *      UnityEditor:UnityEditor.EditorUtility.FormatBytes 1024
+ *      See InvokerTestEditor.cs
  *      
  *  Author:     Qu Yong
+ *  Version:    1.0.0
+ *  Date:       2015-08-05
  *  Email:      work.qu@outlook.com
  */
 using UnityEngine;
@@ -42,325 +38,372 @@ using System.Reflection;
 
 public static class Invoker
 {
-    const string INVOKER_METHOD_NAME = "Invoker.Invoke";
+    const string INVOKER_METHOD_NAME = "Invoker.InvokeCommandLine";
     const string TAG_NEXT_INVOKE = "-next";
     const string TAG_INVOKE_LOG = "-invokeLog";
     const string ASM_NAME_CSHARP = "Assembly-CSharp";
+    const string ASM_NAME_CSHARP_EDITOR = "Assembly-CSharp-Editor";
     const string ASM_NAME_CSHARP_EDITOR_FP = "Assembly-CSharp-Editor-firstpass";
     const string ASM_NAME_CSHARP_FP = "Assembly-CSharp-firstpass";
+    const string PATTERN_ENGINE_TYPES = "UnityEngine.";
+    const string NAMESPACE_ENGINE = "UnityEngine";
+    const string PATTERN_EDITOR_TYPES = "UnityEditor.";
+    const string NAMESPACE_EDITOR = "UnityEditor";
     const char TAG_ARG_SEP = '|';
     const char TAG_ARRAY_BEG = '[';
     const char TAG_ARRAY_END = ']';
     const char TAG_ARRAY_SEP = ',';
-    
+
 
     /// <summary>
     /// 通过命令行调用方法入口
     /// </summary>
-    static void Invoke()
+    static void InvokeCommandLine()
     {
         int exitCode = 0;
         try
         {
             var cmdArgs = Environment.GetCommandLineArgs();
+
             var index = Array.IndexOf(cmdArgs, TAG_INVOKE_LOG);
+            string logFilePath = null;
             if (index > 0 && index + 1 < cmdArgs.Length)
             {
-                Logger.Open(cmdArgs[index + 1]);
+                logFilePath = cmdArgs[index + 1];
             }
-            else
-            {
-                Logger.Open();
-            }
+
             index = Array.IndexOf(cmdArgs, INVOKER_METHOD_NAME);
             if (index > 0 && index + 1 < cmdArgs.Length)
             {
-                var argList = new List<string>();
+                var invokeArgs = new List<string>();
                 while (index < cmdArgs.Length)
                 {
-                    argList.Clear();
+                    invokeArgs.Clear();
                     for (int i = index + 1; i < cmdArgs.Length; index = ++i)
                     {
                         var argStr = cmdArgs[i];
-                        if (argStr[0] == '-')
+                        if (argStr == TAG_NEXT_INVOKE)
                         {
-                            if (argStr == TAG_NEXT_INVOKE)
-                            {
-                                //break for next invoke
-                                break;
-                            }
-                            decimal d;
-                            if (decimal.TryParse(argStr, out d) == false)
-                            {
-                                //unrecognized option, break all
-                                index = cmdArgs.Length;
-                                break;
-                            }
+                            //break for next invoke
+                            break;
                         }
-                        argList.Add(argStr);
+                        invokeArgs.Add(argStr);
                     }
-                    InvokeWithArgs(argList.ToArray());
+                    InvokeExplict(invokeArgs.ToArray(), logFilePath);
                 }
             }
             else
             {
-                Logger.WriteLine("Nothing to invoke");
-                throw new Exception("INVALID_COMMAND_LINE_ARGUMENTS");
+                ThrowInvokerExcpetion("Invalid command line arguments");
             }
         }
-        catch (Exception e)
+        catch
         {
-           Logger.WriteLine(e);
-           exitCode = 1;
+            exitCode = 1;
         }
         finally
         {
-           Logger.Flush();
-           if (exitCode != 0)
-           {
-               //Mono on mac does not fully support try-catch-finally, finally block will not be called when application exit from catch block.
-               EditorApplication.Exit(exitCode);
-           }
+            if (exitCode != 0)
+            {
+                //Mono on mac does not fully support try-catch-finally, finally block will not be called when application exit from catch block.
+                EditorApplication.Exit(exitCode);
+            }
         }
     }
 
     /// <summary>
     /// 使用显示参数列表调用方法
     /// </summary>
-    public static void InvokeWithArgs(string[] args)
+    public static object InvokeExplict(string[] args, string logFilePath = null)
     {
-        if (args.Length > 0)
+        try
         {
-            var invokeStr = args[0];
-            string assemblyName = null;
-            var indexOf = invokeStr.IndexOf(':');
-            if (indexOf > 0)
-            {
-                assemblyName = invokeStr.Substring(0, indexOf);
-                invokeStr = invokeStr.Substring(indexOf + 1);
-            }
-
-            indexOf = invokeStr.LastIndexOf('.');
-            if (indexOf > 0)
-            {
-                var typeName = invokeStr.Substring(0, indexOf);
-                var methodName = invokeStr.Substring(indexOf + 1);
-
-                var argList = new List<string>();
-                for (int i = 1; i < args.Length; i++)
-                {
-                    var argStr = args[i];
-                    if (argStr[0] == '-')
-                    {
-                        //数字的负号或是一个新参数开始
-                        decimal val;
-                        if (decimal.TryParse(argStr, out val) == false)
-                            break;
-                    }
-                    argList.Add(args[i]);
-                }
-                InvokeStatic(assemblyName, typeName, methodName, argList);
-            }
-            else
-            {
-                Logger.WriteLine("Invalid arguments, method name not found.");
-                throw new Exception("METHOD_NOT_FOUND");
-            }
+            Logger.Open(logFilePath);
+            Logger.WriteLine("---------Invoke Begin---------");
+            return InvokeInternal(args);
         }
-        else
+        catch (Exception e)
         {
-            Logger.WriteLine("Insufficient arguments");
-            throw new Exception("INVALID_INVOKE_ARGUMENTS");
+            Logger.WriteLine("---------Exception Occured---------");
+            Logger.WriteLine(e);
+            throw e;
         }
+        finally
+        {
+            Logger.WriteLine("---------Invoke End---------");
+            Logger.Flush();
+        }
+    }
+
+    static object InvokeInternal(string[] invokeArgs)
+    {
+        if (invokeArgs == null || invokeArgs.Length == 0)
+        {
+            ThrowInvokerExcpetion("Insufficient invoke arguments");
+        }
+
+        var invokeStr = invokeArgs[0];
+        //try get assembly name
+        string assemblyName = null;
+        var indexOf = invokeStr.IndexOf(':');
+        if (indexOf > 0)
+        {
+            assemblyName = invokeStr.Substring(0, indexOf);
+            invokeStr = invokeStr.Substring(indexOf + 1);
+        }
+
+        //get method name
+        indexOf = invokeStr.LastIndexOf('.');
+        if (indexOf <= 0)
+        {
+            ThrowInvokerExcpetion("Method name not found in invoke arguments:" + invokeStr);
+        }
+
+        var typeName = invokeStr.Substring(0, indexOf);
+        var methodName = invokeStr.Substring(indexOf + 1);
+        var paramStrings = new List<string>();
+        for (int i = 1; i < invokeArgs.Length; i++)
+        {
+            paramStrings.Add(invokeArgs[i]);
+        }
+        return InvokeStatic(assemblyName, typeName, methodName, paramStrings);
     }
 
     /// <summary>
     /// 调用一个类中的静态方法
     /// </summary>
-    static void InvokeStatic(string assemblyName, string typeName, string methodName, List<string> argList)
+    static object InvokeStatic(string assemblyName, string typeName, string methodName, List<string> paramStrings)
     {
-        Logger.WriteLine("---------Invoke Static---------");
-        Logger.WriteLine("AssemblyName:    {0}", assemblyName);
-        Logger.WriteLine("TypeName:        {0}", typeName);
-        Logger.WriteLine("MethodName:      {0}", methodName);
-        Logger.WriteLine("Arguments:");
-        for (int i = 0; i < argList.Count; i++)
+        Logger.WriteLine("AssemblyName:     {0}", assemblyName);
+        Logger.WriteLine("TypeName:         {0}", typeName);
+        Logger.WriteLine("MethodName:       {0}", methodName);
+        Logger.WriteLine("ParameterCount:  {0}", paramStrings.Count);
+        for (int i = 0; i < paramStrings.Count; i++)
         {
-            Logger.WriteLine("[{0}]  =>  {1}", i, argList[i]);
+            Logger.WriteLine("[{0}]  =>  {1}", i + 1, paramStrings[i]);
         }
 
         Logger.WriteLine("---------Match Method---------");
-        var type = GetTypeByName(assemblyName, typeName);
-        if (type != null)
+        var typeInfo = MatchType(typeName, assemblyName);
+        if (typeInfo == null)
         {
-            ///TODO 调用方法时如何匹配参数？
-            ///使用Type.InvokeMember只能接受string作为参数
-            ///使用Type.GetMethod无法处理有重载方法的情况
-            ///问题的关键在于无法预知方法的参数列表类型，或许可以参考System.Reflection.Binder来实现自定义参数匹配
-
-            //type.InvokeMember(methodName,
-            //    BindingFlags.Static | BindingFlags.InvokeMethod |
-            //    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy,
-            //    Type.DefaultBinder, null, argList.ToArray());
-
-            List<object> parsedArgList;
-            var methodInfo = MatchMethodInfo(type, methodName,
-                BindingFlags.Static | BindingFlags.InvokeMethod |
-                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy,
-                argList, out parsedArgList);
-            if (methodInfo != null)
-            {
-                Logger.WriteLine("Method Matched:  {0}", methodInfo.Name);
-                Logger.WriteLine("---------Invoke Result---------");
-                Logger.WriteLine(methodInfo.Invoke(null, parsedArgList.ToArray()));
-            }
-            else
-            {
-                Logger.WriteLine("Method Not Found");
-                throw new Exception("METHOD_NOT_FOUND");
-            }
+            ThrowInvokerExcpetion("Type match failed:" + typeName);
         }
-        else
+
+        //TODO 调用方法时如何匹配参数？
+        //使用Type.GetMethod在方法有重载的时候无法很完备的进行匹配，当参数数量相同但类型不同则无法优先匹配最合适的方法
+        //另一种方式是使用Type.InvokeMember来调用方法，但问题出在于无法预知方法的参数列表类型来将参数字符串转换成方法声明中的参数类型
+        //或许可以参考System.Reflection.Binder来实现自定义参数匹配策略
+        //type.InvokeMember(methodName,
+        //    BindingFlags.Static | BindingFlags.InvokeMethod |
+        //    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy,
+        //    Type.DefaultBinder, null, ???);
+
+        List<object> parsedParamValues;
+        var methodInfo = MatchMethod(typeInfo, methodName,
+            BindingFlags.Static | BindingFlags.InvokeMethod |
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy,
+            paramStrings, out parsedParamValues);
+        if (methodInfo == null)
         {
-            Logger.WriteLine("Type Not Found");
-            throw new Exception("TYPE_NOT_FOUND");
+            ThrowInvokerExcpetion("Method match failed:" + methodName);
         }
+
+        Logger.WriteLine("Method Matched:  {0}", methodInfo.Name);
+        Logger.WriteLine("---------Invoke Result---------");
+        var result = methodInfo.Invoke(null, parsedParamValues.ToArray());
+        Logger.WriteLine(result != null ? result.ToString() : "null");
+        return result;
     }
 
     /// <summary>
     /// 显示指定AssemblyName或者使用尝试在默认的几个Assembly中查找
     /// Ref:    Unity Manual - Scripting - Scripting Overview - Special Folders and Script Compilation Order
     /// </summary>
-    static Type GetTypeByName(string assemblyName, string typeName)
+    static Type MatchType(string typeName, string assemblyName)
     {
         if (string.IsNullOrEmpty(assemblyName))
         {
-            var type = Type.GetType(typeName, false, true);
-            if (type != null) { return type; }
-
-            //尝试在Editor和Plugins目录之外的代码中查找
-            var newTypeName = string.Format("{0}, {1}", typeName, ASM_NAME_CSHARP);
-            Logger.WriteLine("Retry for AssemblyQualifiedName:  {0}", newTypeName);
-            type = Type.GetType(newTypeName, false, true);
-            if (type != null) { return type; }
-
-            //尝试在与顶层命名空间同名的Assembly中查找
-            var index = typeName.IndexOf('.');
-            if (index > 0)
+            //尝试在Unity引擎程序集提供的类型中查找
+            if (typeName.StartsWith(PATTERN_ENGINE_TYPES))
             {
-                newTypeName = string.Format("{0}, {1}", typeName, typeName.Substring(0, index));
-                Logger.WriteLine("Retry for AssemblyQualifiedName:  {0}", newTypeName);
-                type = Type.GetType(newTypeName, false, true);
-                if (type != null) { return type; }
+                return GetTypeOfUnity(typeName, NAMESPACE_ENGINE);
             }
+            else if (typeName.StartsWith(PATTERN_EDITOR_TYPES))
+            {
+                return GetTypeOfUnity(typeName, NAMESPACE_EDITOR);
+            }
+            else
+            {
+                //尝试在Plugins之外的Editor目录中查找
+                var type = GetTypeByName(typeName, Assembly.Load(ASM_NAME_CSHARP_EDITOR));
+                if (type != null)
+                {
+                    return type;
+                }
 
-            //尝试在Plugins/Editor目录的代码中查找
-            newTypeName = string.Format("{0}, {1}", typeName, ASM_NAME_CSHARP_EDITOR_FP);
-            Logger.WriteLine("Retry for AssemblyQualifiedName:  {0}", newTypeName);
-            type = Type.GetType(newTypeName, false, true);
-            if (type != null) { return type; }
+                //尝试在Plugins中的Editor目录中查找
+                type = GetTypeByName(typeName, Assembly.Load(ASM_NAME_CSHARP_EDITOR_FP));
+                if (type != null)
+                {
+                    return type;
+                }
 
-            //尝试在Plugins目录中代码中查找
-            newTypeName = string.Format("{0}, {1}", typeName, ASM_NAME_CSHARP_FP);
-            Logger.WriteLine("Retry for AssemblyQualifiedName:  {0}", newTypeName);
-            type = Type.GetType(newTypeName, false, true);
-            if (type != null) { return type; }
+                //尝试在Plugins之外的非Editor目录中查找
+                type = GetTypeByName(typeName, Assembly.Load(ASM_NAME_CSHARP));
+                if (type != null)
+                {
+                    return type;
+                }
 
+                //尝试在Plugins中的非Editor目录查找
+                type = GetTypeByName(typeName, Assembly.Load(ASM_NAME_CSHARP_FP));
+                if (type != null)
+                {
+                    return type;
+                }
+            }
             return null;
         }
         else
         {
-            return Type.GetType(string.Format("{0}, {1}", typeName, assemblyName), false, true);
+            //直接匹配给定的类型全名
+            return GetTypeByName(typeName, Assembly.Load(assemblyName));
         }
+    }
+
+    static Type GetTypeByName(string typeName, Assembly asm)
+    {
+        var type = asm.GetType(typeName, false, true);
+        var found = type != null;
+        Logger.WriteLine("Type {0}: {1}, {2}", found ? "found" : "not found", typeName, asm.GetName().Name);
+        return type;
+    }
+
+    static Type GetTypeOfUnity(string typeName, string moduleName)
+    {
+        Type type = null;
+        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            var asmName = asm.GetName().Name;
+            if (asmName.StartsWith(moduleName))
+            {
+                type = asm.GetType(typeName, false, true);
+                if (type != null)
+                {
+                    break;
+                }
+            }
+        }
+        var found = type != null;
+        Logger.WriteLine("Type {0}: {1}, {2}", found ? "found" : "not found", typeName, moduleName);
+        return type;
     }
 
     /// <summary>
     /// 匹配一个类型中的特定名称的方法
     /// </summary>
-    static MethodInfo MatchMethodInfo(Type type, string methodName,
-        BindingFlags bindingAttr, List<string> argList, out List<object> parsedArgList)
+    static MethodInfo MatchMethod(Type type, string methodName,
+        BindingFlags bindingAttr, List<string> paramStrings, out List<object> parsedParamValues)
     {
-        parsedArgList = null;
+        parsedParamValues = null;
         try
         {
             var methodInfo = type.GetMethod(methodName, bindingAttr);
             if (methodInfo == null)
             {
                 //match method as property getter and setter
-                if (argList.Count == 0 || argList.Count == 1)
+                if (paramStrings.Count == 0 || paramStrings.Count == 1)
                 {
-                    Logger.WriteLine("No method found, try match as property name");
+                    Logger.WriteLine("No method found in type: {0}, try match as property name: {0}", type.Name, methodName);
                     var prop = type.GetProperty(methodName, bindingAttr);
                     if (prop != null)
                     {
-                        methodInfo = argList.Count == 0 ? prop.GetGetMethod(true) : prop.GetSetMethod(true);
+                        methodInfo = paramStrings.Count == 0 ? prop.GetGetMethod(true) : prop.GetSetMethod(true);
                     }
                 }
             }
-
-            return methodInfo != null && MatchMethodParameters(methodInfo, argList, out parsedArgList) ? methodInfo : null;
+            if (methodInfo != null)
+            {
+                return MatchParameters(methodInfo, paramStrings, out parsedParamValues) ? methodInfo : null;
+            }
         }
-        catch (AmbiguousMatchException) { Logger.WriteLine("AmbiguousMatchException Occured!"); }
-        
+        catch (AmbiguousMatchException)
+        {
+            Logger.WriteLine("AmbiguousMatchException occured, match by method name failed, try match by parameters");
+        }
+
         var methods = type.GetMethods(bindingAttr);
         foreach (var item in methods)
         {
-            //尝试匹配参数数目相同的方法
-            if (item.Name == methodName && item.GetParameters().Length == argList.Count)
+            var paramInfoList = item.GetParameters();
+            var paramInfoCount = paramInfoList.Length;
+            if (item.Name == methodName)
             {
-                if (MatchMethodParameters(item, argList, out parsedArgList))
+                if (paramInfoCount == paramStrings.Count)
                 {
-                    return item;
+                    //尝试匹配参数数目相同的方法
+                    if (MatchParameters(item, paramStrings, out parsedParamValues))
+                    {
+                        return item;
+                    }
+                }
+                else if (paramInfoCount > paramStrings.Count && paramInfoList[paramStrings.Count].IsOptional)
+                {
+                    //尝试匹配有可选参数的情况
+                    if (MatchParameters(item, paramStrings, out parsedParamValues))
+                    {
+                        return item;
+                    }
                 }
             }
         }
-
-        foreach (var item in methods)
-        {
-            //尝试匹配有可选参数的情况
-            var parameters = item.GetParameters();
-            if (item.Name == methodName && parameters.Length > argList.Count && parameters[argList.Count].IsOptional)
-            {
-                if (MatchMethodParameters(item, argList, out parsedArgList))
-                {
-                    return item;
-                }
-            }
-        }
-
         return null;
     }
 
     /// <summary>
     /// 根据输入的参数列表判断一个方法是否适合调用，并尝试将输入参数转化为对应的类型
     /// </summary>
-    static bool MatchMethodParameters(MethodInfo candidate, List<string> argList, out List<object> parsedArgList)
+    static bool MatchParameters(MethodInfo candidate, List<string> paramStrings, out List<object> parsedParamValues)
     {
-        parsedArgList = new List<object>();
+        parsedParamValues = new List<object>();
         var allMatched = true;
         var parameters = candidate.GetParameters();
         for (int i = 0; i < parameters.Length; i++)
         {
             var param = parameters[i];
-            object result;
-            if (i < argList.Count)
+            if (i < paramStrings.Count)
             {
-                var argStr = argList[i];
-                allMatched &= TryConvertTo(argStr, param.ParameterType, out result);
-                Logger.WriteLine("Match Parameter:  {0}  =>  {1} / {2},    {3}", argStr, param.Name, param.ParameterType.Name, allMatched);
+                var paramStr = paramStrings[i];
+                object paramVal;
+                var matched = TryConvertParamValue(paramStr, param.ParameterType, out paramVal);
+                Logger.WriteLine("Positional Parameter: {0} => {1} {2} = {3},   matched:{4}", paramStr, param.ParameterType.Name, param.Name, paramVal, matched);
+                if (matched)
+                {
+                    parsedParamValues.Add(paramVal);
+                }
+                else
+                {
+                    allMatched = false;
+                    break;
+                }
             }
             else if (param.IsOptional)
             {
-                allMatched &= true;
-                result = param.DefaultValue;
-                Logger.WriteLine("Optional Parameter:  {0}  =>  {1} / {2},    {3}", result, param.Name, param.ParameterType.Name, allMatched);
+                var paramVal = param.DefaultValue;
+                var matched = true;
+                Logger.WriteLine("Optional Parameter:   {0} {1} = {2},   matched:{3}", param.ParameterType.Name, param.Name, paramVal, matched);
+                if (matched)
+                {
+                    parsedParamValues.Add(paramVal);
+                }
             }
             else
             {
-                allMatched &= false;
-                result = null;
+                Logger.WriteLine("Paramter not enough");
+                allMatched = false;
+                break;
             }
-            if (allMatched) { parsedArgList.Add(result); }
         }
         return allMatched;
     }
@@ -368,18 +411,18 @@ public static class Invoker
     /// <summary>
     /// 尝试转换参数的类型
     /// </summary>
-    static bool TryConvertTo(string argStr, Type targetType, out object result)
+    static bool TryConvertParamValue(string paramStr, Type targetType, out object paramVal)
     {
-        result = null;
+        paramVal = null;
         try
         {
             if (targetType.IsEnum)
             {
-                if (argStr.IndexOf(TAG_ARG_SEP) > 0)
+                if (paramStr.IndexOf(TAG_ARG_SEP) > 0)
                 {
                     int resVal = 0;
                     bool nothingParsed = true;
-                    foreach (var eStr in argStr.Split(TAG_ARG_SEP))
+                    foreach (var eStr in paramStr.Split(TAG_ARG_SEP))
                     {
                         if (Enum.IsDefined(targetType, eStr))
                         {
@@ -396,29 +439,29 @@ public static class Invoker
                             }
                         }
                     }
-                    result = nothingParsed ? null : Enum.ToObject(targetType, resVal);
+                    paramVal = nothingParsed ? null : Enum.ToObject(targetType, resVal);
                 }
                 else
                 {
-                    if (Enum.IsDefined(targetType, argStr))
+                    if (Enum.IsDefined(targetType, paramStr))
                     {
-                        result = Enum.Parse(targetType, argStr);
+                        paramVal = Enum.Parse(targetType, paramStr);
                     }
                     else
                     {
                         int val;
-                        if (int.TryParse(argStr, out val) && Enum.IsDefined(targetType, val))
+                        if (int.TryParse(paramStr, out val) && Enum.IsDefined(targetType, val))
                         {
-                            result = Enum.ToObject(targetType, val);
+                            paramVal = Enum.ToObject(targetType, val);
                         }
                     }
                 }
             }
             else if (targetType.IsArray)
             {
-                if (argStr.Length > 2 && argStr[0] == TAG_ARRAY_BEG && argStr[argStr.Length - 1] == TAG_ARRAY_END)
+                if (paramStr.Length > 2 && paramStr[0] == TAG_ARRAY_BEG && paramStr[paramStr.Length - 1] == TAG_ARRAY_END)
                 {
-                    var eleStrs = argStr.Substring(1, argStr.Length - 2).Split(TAG_ARRAY_SEP);
+                    var eleStrs = paramStr.Substring(1, paramStr.Length - 2).Split(TAG_ARRAY_SEP);
                     var eleType = targetType.GetElementType();
                     if (eleType.IsPrimitive || eleType.IsEnum || eleType == typeof(string))
                     {
@@ -427,43 +470,59 @@ public static class Invoker
                         for (int i = 0; i < eleStrs.Length && suc; i++)
                         {
                             object eleVal;
-                            suc &= TryConvertTo(eleStrs[i], eleType, out eleVal);
+                            suc &= TryConvertParamValue(eleStrs[i], eleType, out eleVal);
                             arr.SetValue(eleVal, i);
                         }
-                        if (suc) { result = arr; }
+                        if (suc)
+                        {
+                            paramVal = arr;
+                        }
                     }
                 }
             }
             else
             {
-                result = Convert.ChangeType(argStr, targetType);
+                paramVal = Convert.ChangeType(paramStr, targetType);
             }
         }
-        catch { return false; }
-        return result != null;
+        catch
+        {
+            return false;
+        }
+        return paramVal != null;
+    }
+
+    static void ThrowInvokerExcpetion(string msg)
+    {
+        throw new Exception(string.Format("[InvokerExcpetion]   {0}", msg));
     }
 
     private static class Logger
     {
         static TextWriter logWriter = TextWriter.Null;
 
-        public static void Open()
+        public static void Open(string logFilePath = null)
         {
-            logWriter = new StringWriter();
-        }
-
-        public static void Open(string path)
-        {
-            var sw = new StreamWriter(path, false);
-            sw.AutoFlush = true;
-            logWriter = sw;
+            if (string.IsNullOrEmpty(logFilePath))
+            {
+                logWriter = new StringWriter();
+            }
+            else
+            {
+                var sw = new StreamWriter(logFilePath, true);
+                sw.AutoFlush = true;
+                logWriter = sw;
+            }
         }
 
         public static void Flush()
         {
             if (logWriter != TextWriter.Null)
             {
-                Debug.Log(logWriter);
+                if (logWriter is StringWriter)
+                {
+                    Debug.Log((logWriter as StringWriter).ToString());
+                }
                 logWriter.Dispose();
                 logWriter = null;
             }
@@ -498,24 +557,5 @@ public static class Invoker
         {
             logWriter.WriteLine(fmt, args);
         }
-
-        //TextWriter defOut;
-        //public Logger()
-        //{
-        //    defOut = Console.Out;
-        //    Console.SetOut(new StreamWriter("log_invoker.txt", false));
-
-        //    //build player for android will got Resource re-package failed error after change Console.Out to another StringWriter
-        //    //Console.Out is an instance of class UnityLogWriter by default
-        //    Console.SetOut(new StringWriter());
-        //}
-
-        //public static void Dispose()
-        //{
-        //    var sw = Console.Out;
-        //    Console.SetOut(defOut);
-        //    Debug.Log(sw);
-        //    sw.Dispose();
-        //}
     }
 }

@@ -143,7 +143,7 @@ def _del(path, alsoDelSuffixes = None):
 
 class _Invoker:
     def __init__(self, methodName, argList):
-        self.invokeList = ['-executeMethod', 'Invoker.Invoke', methodName]
+        self.invokeList = ['-executeMethod', 'Invoker.InvokeCommandLine', methodName]
         self.invokeList.extend(argList)
         pass
 
