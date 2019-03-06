@@ -1,3 +1,9 @@
 /Library/
 /Temp/
 *.DS_Store
+/obj/
+/.vs/
+/Packages/
+/ProjectSettings/
+*.csproj
+*.sln
