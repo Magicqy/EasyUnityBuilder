@@ -191,14 +191,15 @@ class _Invoker:
         pass
          
     def _setup(self, projPath, homePath):
+        #try avoid path conflict with prefix
         _copy(os.path.join(homePath, 'EditorScripts/BuildUtility.cs'),
-              os.path.join(projPath, 'Assets/__UnityBuildUtility__/Editor/BuildUtility.cs'))
+              os.path.join(projPath, 'Assets/_UnityBuildUtility/Editor/BuildUtility.cs'))
         _copy(os.path.join(homePath, 'EditorScripts/Invoker.cs'),
-              os.path.join(projPath, 'Assets/__UnityBuildUtility__/Editor/Invoker.cs'))
+              os.path.join(projPath, 'Assets/_UnityBuildUtility/Editor/Invoker.cs'))
         pass
 
     def _cleanup(self, projPath):
-        _del(os.path.join(projPath, 'Assets/__UnityBuildUtility__'), ['.meta'])
+        _del(os.path.join(projPath, 'Assets/_UnityBuildUtility'), ['.meta'])
         path = self.invokeLogFile
         if path and os.path.exists(path):
             logFile = open(path)
@@ -225,7 +226,7 @@ def _buildCmd(args):
     if not os.path.exists(dir):
         os.makedirs(dir)
 
-    ivk = _Invoker('BuildUtility.BuildPlayer', [outPath, buildTarget, buildOpts])
+    ivk = _Invoker('_BuildUtility.BuildPlayer', [outPath, buildTarget, buildOpts])
     ret = ivk.invoke(projPath, args.homePath, args.unityExe, args.ulog, not args.nobatch, not args.noquit)
     
     #place exported project in outPath/ instead of outPath/productName/

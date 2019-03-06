@@ -6,7 +6,8 @@ using UnityEditor;
 using UnityEditor.iOS.Xcode;
 #endif
 
-public static class BuildUtility
+//try avoid type name conflict with prefix
+public static class _BuildUtility
 {
     public static void DelSymbolForGroup(BuildTargetGroup group, string symbol)
     {
@@ -49,14 +50,12 @@ public static class BuildUtility
             if (!string.IsNullOrEmpty(result))
 #endif
             {
-                Debug.LogError(result.ToString());
-                EditorApplication.Exit(1);
+                throw new System.Exception(result.ToString());
             }
         }
         else
         {
-            Debug.LogError("There is no enabled scene found in build settings");
-            EditorApplication.Exit(1);
+            throw new System.Exception("There is no enabled scene found in build settings");
         }
     }
 
