@@ -4,16 +4,17 @@ import buildutil as utl
 
 start = time.time()
 
-UNITY_PROJ = 'TestProject'
+UNITY_PROJ = './TestProject'
 BUILD_PATH = os.path.join(UNITY_PROJ, 'Builds')
 EXPORT_PROJ = os.path.join(BUILD_PATH, 'ios-proj')
 OUT_FILE = os.path.join(BUILD_PATH, 'ios-output.ipa')
 
 BUNDLE_ID = 'com.test.proj'
-PROV_FILE = '{mobileprovision file path}'
-KEY_CHAIN = ['{codesgin keychain file path}}', '{codesign keychain password}']
+PROV_FILE = 'MOBILE_PROVISION_FILE_PATH'
+KEY_CHAIN = ['CODE_SIGN_KEY_CHAIN_FILE_PATH', 'CODE_SIGN_KEY_CHAIN_PASSWORD}']
 
 shared_args = dict(
+    #unity = 'UNITY_INSTALL_PATH',
     log = os.path.join(BUILD_PATH, 'build.log'),
     ulog = os.path.join(BUILD_PATH, 'unity.log')
 )

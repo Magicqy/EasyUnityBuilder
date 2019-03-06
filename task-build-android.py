@@ -4,14 +4,14 @@ import buildutil as utl
 
 start = time.time()
 
-UNITY_PROJ = 'TestProject'
+UNITY_PROJ = './TestProject'
 BUILD_PATH = os.path.join(UNITY_PROJ, 'Builds')
 EXPORT_PROJ = os.path.join(BUILD_PATH, 'android-proj')
 
 BUNDLE_ID = 'com.test.proj'
-BUILD_FILE = 'gradlew/build.gradle'
 
 shared_args = dict(
+    #unity = 'UNITY_INSTALL_PATH',
     log = os.path.join(BUILD_PATH, 'build.log'),
     ulog = os.path.join(BUILD_PATH, 'unity.log')
 )
@@ -28,8 +28,7 @@ utl.runTask(utl.BUILD, shared_args,
     
 utl.runTask(utl.PACK_ANDROID, shared_args,
     projPath = EXPORT_PROJ,
-    buildFile = BUILD_FILE,
-    task = 'assembleDebug')
+    task = 'assembleRelease')
 
 print('===time passed===')
 print(time.time()-start)
