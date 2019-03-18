@@ -1,3 +1,5 @@
 @echo off
 @python %~dp0\buildutil.py %*
-echo exitcode = %errorlevel%
+set BUILD_EXIT_CODE=%errorlevel%
+echo exitcode = %BUILD_EXIT_CODE%
+exit %BUILD_EXIT_CODE%
