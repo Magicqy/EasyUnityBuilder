@@ -105,7 +105,6 @@ public static class Invoker
         {
             if (exitCode != 0)
             {
-                //Mono on mac does not fully support try-catch-finally, finally block will not be called when application exit from catch block.
                 EditorApplication.Exit(exitCode);
             }
         }
@@ -131,7 +130,7 @@ public static class Invoker
         finally
         {
             Logger.WriteLine("---------Invoke End---------");
-            Logger.Flush();
+            Logger.Dispose();
         }
     }
 
@@ -515,7 +514,7 @@ public static class Invoker
             }
         }
 
-        public static void Flush()
+        public static void Dispose()
         {
             if (logWriter != TextWriter.Null)
             {
