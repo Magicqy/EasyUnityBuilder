@@ -463,6 +463,7 @@ def _packageiOSCmd(args):
     pkgSrcFile = os.path.join(exportPath, "%s.ipa" %buildTarget)
     if os.path.exists(pkgSrcFile):
         _copy(pkgSrcFile, pkgOutFile)
+        _del(pkgSrcFile)
     else:
         _logInfo('exported package file not exist: %s' %pkgSrcFile, 1)
 
@@ -472,6 +473,7 @@ def _packageiOSCmd(args):
         archiveOutFile = _fullPath(args.archiveFile)
         if os.path.exists(archiveSrcFile):
             _copy(archiveSrcFile, archiveOutFile)
+            _del(archiveSrcFile)
         else:
             _logInfo('exported archive file not exist: %s' %archiveFile, 1)
 
