@@ -304,7 +304,7 @@ def _packageiOSCmd(args):
         _logInfo('package iOS only support on MacOS', 1)
 
     projPath = _fullPath(args.projPath)
-    buildType = 'Debug' if args.debug else 'Release'
+    buildConfig = 'Debug' if args.debug else 'Release'
     buildTarget = args.target
     buildSdk = str(args.sdk).lower()
     pkgOutFile = _fullPath(args.outFile) if args.outFile else projPath + '.ipa'
@@ -357,15 +357,15 @@ def _packageiOSCmd(args):
         _logInfo('project directory not exist: %s' %projPath, 1)
 
     _logInfo('===Package iOS===')
-    _logInfo('projectPath:     %s' %projPath)
-    _logInfo('buildType:       %s' %buildType)
-    _logInfo('buildTarget:     %s' %buildTarget)
-    _logInfo('buildSdk:        %s' %buildSdk)
-    _logInfo('bundleId:        %s' %bundleId)
-    _logInfo('provision name:  %s' %provName)
-    _logInfo('provision uuid:  %s' %provUUID)
-    _logInfo('productName:     %s' %productName)
-    _logInfo('pkgOutFile:      %s' %pkgOutFile)
+    _logInfo('projectPath:          %s' %projPath)
+    _logInfo('buildConfiguration:   %s' %buildConfig)
+    _logInfo('buildTarget:          %s' %buildTarget)
+    _logInfo('buildSdk:             %s' %buildSdk)
+    _logInfo('bundleId:             %s' %bundleId)
+    _logInfo('provision name:       %s' %provName)
+    _logInfo('provision uuid:       %s' %provUUID)
+    _logInfo('productName:          %s' %productName)
+    _logInfo('pkgOutFile:           %s' %pkgOutFile)
     _logInfo('')
 
     #try resolve the 'User Interaction Is Not Allowed' problem when run from shell
@@ -381,7 +381,7 @@ def _packageiOSCmd(args):
     argList = ['xcodebuild',
                '-project', os.path.join(projPath, '%s.xcodeproj' %buildTarget),
                '-target', buildTarget,
-               '-configuration', buildType,
+               '-configuration', buildConfig,
                'clean']
     _logInfo(' '.join(argList))
     ret = subprocess.call(argList)
@@ -395,7 +395,7 @@ def _packageiOSCmd(args):
                '-project', os.path.join(projPath, '%s.xcodeproj' %buildTarget),
                '-sdk', buildSdk,
                '-scheme', buildScheme,
-               '-configuration', buildType,
+               '-configuration', buildConfig,
                'PROVISIONING_PROFILE=%s' %provUUID,
                'CODE_SIGN_IDENTITY=%s' %teamName,
                'PRODUCT_NAME=%s' %productName]
@@ -451,7 +451,7 @@ def _packageiOSCmd(args):
                '-exportArchive',
                '-archivePath', archiveOutPath,
                '-exportPath', exportPath,
-               '-configuration', buildType,
+               '-configuration', buildConfig,
                '-exportOptionsPlist', exportOptFilePath]
 
     _logInfo(' '.join(argList))
@@ -552,7 +552,7 @@ def _parse_args(explicitArgs = None):
     packios.add_argument('-outFile', help = 'package file output path')
     packios.add_argument('-archiveFile', help = 'archive output path, for package and dsym files backup')
     packios.add_argument('-proName', help = 'specifies the product name')
-    packios.add_argument('-debug', action = 'store_true', help = 'build for Debug or Release')
+    packios.add_argument('-debug', action = 'store_true', help = 'use Debug or Release build configuration')
     packios.add_argument('-target', default = 'Unity-iPhone', help = 'build target, Unity-iPhone by default')
     packios.add_argument('-sdk', default = 'iphoneos', help = 'build sdk version, latest iphoneos by default')
     packios.add_argument('-keychain', nargs = 2,
