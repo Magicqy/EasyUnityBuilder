@@ -463,16 +463,17 @@ def _packageiOSCmd(args):
     pkgSrcFile = os.path.join(exportPath, "%s.ipa" %buildTarget)
     if os.path.exists(pkgSrcFile):
         _copy(pkgSrcFile, pkgOutFile)
-        #exoprt dsym files
-        if args.dsymFile:
-            dsymSrcFile = os.path.join(exportPath, "%s.xcarchive/dSYMs" %buildTarget)
-            dsymOutFile = _fullPath(args.dsymFile)
-            if os.path.exists(dsymSrcFile):
-                _copy(dsymSrcFile, dsymOutFile)
-            else:
-                _logInfo('exported dsym file not exist: %s' %dsymFile, 1)
     else:
         _logInfo('exported package file not exist: %s' %pkgSrcFile, 1)
+
+    #exoprt archive files
+    if args.archiveFile:
+        archiveSrcFile = os.path.join(exportPath, "%s.xcarchive" %buildTarget)
+        archiveOutFile = _fullPath(args.archiveFile)
+        if os.path.exists(archiveSrcFile):
+            _copy(archiveSrcFile, archiveOutFile)
+        else:
+            _logInfo('exported archive file not exist: %s' %archiveFile, 1)
 
 def _copyCmd(args):
     src = _fullPath(args.src)
@@ -548,8 +549,8 @@ def _parse_args(explicitArgs = None):
     packios = subparsers.add_parser('packios', help = 'pacakge iOS project with xCode')
     packios.add_argument('projPath', help = 'target project path')
     packios.add_argument('-provFile', help = 'path of the .mobileprovision file', required = True)
-    packios.add_argument('-outFile', help = 'package output file path')
-    packios.add_argument('-dsymFile', help = 'dsym output file path')
+    packios.add_argument('-outFile', help = 'package file output path')
+    packios.add_argument('-archiveFile', help = 'archive output path, for package and dsym files backup')
     packios.add_argument('-proName', help = 'specifies the product name')
     packios.add_argument('-debug', action = 'store_true', help = 'build for Debug or Release')
     packios.add_argument('-target', default = 'Unity-iPhone', help = 'build target, Unity-iPhone by default')
@@ -690,7 +691,7 @@ class _TaskArgParser(dict):
         self.__append(self.projPath)
         self.__appends('-provFile', self.provFile)
         self.__appends('-outFile', self.outFile)
-        self.__appends('-dsymFile', self.dsymFile)
+        self.__appends('-archiveFile', self.archiveFile)
         self.__appends('-proName', self.proName)
         self.__appendb('-debug', self.debug)
         self.__appends('-target', self.target)
@@ -748,7 +749,7 @@ def runTask(taskName, shared_args, **kwargs):
     invoke:         projPath, calls
     build:          projPath, buildTarget, outPath, opt, exp, dev, dph
     packandroid:    projPath, buildFile, task, var, pfx, sfx, prop, ndp
-    packios:        projPath, provFile, outFile, dsymFile, proName, debug, target, sdk, keychain, opt, ndo
+    packios:        projPath, provFile, outFile, archiveFile, proName, debug, target, sdk, keychain, opt, ndo
     copy:           src, dst, append, stat
     del:            src, sfx
     '''
