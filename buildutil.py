@@ -388,7 +388,7 @@ def _packageiOSCmd(args):
     if ret != 0:
         _logInfo('execute clean failed with retcode: %s' %ret, ret)
 
-    buildOutFile = os.path.join(projPath, 'build/%s.xcarchive' %buildTarget)
+    archiveOutPath = os.path.join(projPath, 'build/%s.xcarchive' %buildTarget)
     #the default name of scheme should be the same as build target
     buildScheme = buildTarget
     argList = ['xcodebuild',
@@ -404,7 +404,7 @@ def _packageiOSCmd(args):
                         'STRIP_INSTALLED_PRODUCT=YES',
                         'SEPARATE_STRIP=YES',
                         'COPY_PHASE_STRIP=YES'])
-    argList.extend(['-archivePath', buildOutFile, 'archive'])
+    argList.extend(['archive', '-archivePath', archiveOutPath])
 
     if args.opt:
         argList.extend(args.opt)
@@ -413,10 +413,10 @@ def _packageiOSCmd(args):
     if ret != 0:
         _logInfo('execute xcodebuild failed with retcode: %s' %ret, ret)
     #check if build succeed
-    if not os.path.exists(buildOutFile):
-        _logInfo('build output file not exist: %s' %buildOutFile, 1)
+    if not os.path.exists(archiveOutPath):
+        _logInfo('xcodebuild archive output file not exist: %s' %archiveOutPath, 1)
 
-    exportOptFilePath = os.path.join(os.path.dirname(buildOutFile), '%s.plist' %buildTarget)
+    exportOptFilePath = os.path.join(os.path.dirname(archiveOutPath), '%s.plist' %buildTarget)
     try:
         optFile = open(exportOptFilePath, 'w+')
         optFile.write("""
@@ -446,10 +446,10 @@ def _packageiOSCmd(args):
     except:
         _logInfo('create exportOptionsPlist failed', 1)
 
-    exportPath = os.path.dirname(buildOutFile)
+    exportPath = os.path.dirname(archiveOutPath)
     argList = ['xcodebuild',
                '-exportArchive',
-               '-archivePath', buildOutFile,
+               '-archivePath', archiveOutPath,
                '-exportPath', exportPath,
                '-configuration', buildType,
                '-exportOptionsPlist', exportOptFilePath]
