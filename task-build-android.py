@@ -11,7 +11,7 @@ EXPORT_PROJ = os.path.join(BUILD_PATH, 'android-proj')
 BUNDLE_ID = 'com.test.proj'
 
 shared_args = dict(
-    #unity = 'UNITY_INSTALL_PATH',
+    #unityHome = 'UNITY_HOME_PATH',
     log = os.path.join(BUILD_PATH, 'build.log'),
     ulog = os.path.join(BUILD_PATH, 'unity.log')
 )

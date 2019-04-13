@@ -212,6 +212,19 @@ class _Invoker:
     pass
 
 def _buildCmd(args):
+    #check unity home and executable
+    args.unityHome = _fullPath(args.unityHome) if args.unityHome else os.environ.get('UNITY_HOME')
+    if args.unityHome and os.path.exists(args.unityHome):
+        if args.winOS:
+            args.unityExe = os.path.join(args.unityHome, 'Unity.exe')
+        else:
+            args.unityExe = os.path.join(args.unityHome, 'Unity.app/Contents/MacOS/Unity')
+
+        if os.path.exists(args.unityExe) == False:
+            _logInfo('Unity executable not found at: %s' %args.unityExe, 1)
+    else:
+        _logInfo('Unity home path not found, use -unityHome argument or define it with an environment variable UNITY_HOME', 1)
+
     projPath = _fullPath(args.projPath)
     buildTarget = _BuildTarget.From(args.buildTarget)
     buildOpts = _BuildOptions.From(args.opt, args.exp, args.dev)
@@ -240,8 +253,20 @@ def _buildCmd(args):
     pass
 
 def _invokeCmd(args):
+    #check unity home and executable
+    args.unityHome = _fullPath(args.unityHome) if args.unityHome else os.environ.get('UNITY_HOME')
+    if args.unityHome and os.path.exists(args.unityHome):
+        if args.winOS:
+            args.unityExe = os.path.join(args.unityHome, 'Unity.exe')
+        else:
+            args.unityExe = os.path.join(args.unityHome, 'Unity.app/Contents/MacOS/Unity')
+
+        if os.path.exists(args.unityExe) == False:
+            _logInfo('Unity executable not found at: %s' %args.unityExe, 1)
+    else:
+        _logInfo('Unity home path not found, use -unityHome argument or define it with an environment variable UNITY_HOME', 1)
+
     projPath = _fullPath(args.projPath)
-    
     ivk = _Invoker(args.methodName, args.args)
     if args.next:
         for nlist in args.next:
@@ -507,7 +532,7 @@ def _parse_args(explicitArgs = None):
     parser = argparse.ArgumentParser(description = 'build util for Unity')
     parser.add_argument('-log', help = 'build util log file path')
     parser.add_argument('-wmode', action = 'store_true', help = 'use w mode to open log file, by default the mode is a')
-    parser.add_argument('-unity', help = 'unity home path')
+    parser.add_argument('-unityHome', help = 'unity home path')
     parser.add_argument('-ulog', help = 'unity editor log file path')
     parser.add_argument('-nobatch', action = 'store_true', help = 'run unity without -batchmode')
     parser.add_argument('-noquit', action = 'store_true', help = 'run unity without -quit')
@@ -598,22 +623,13 @@ def _run(args):
             os.makedirs(dir)
     _initLogging(args.homePath, args.log, args.wmode, args.ulog)
 
-    #unity home and executable
-    args.unity = _fullPath(args.unity) if args.unity else os.environ.get('UNITY_HOME')
-    if args.unity and os.path.exists(args.unity):
-        if sys.platform.startswith('win32'):
-            args.winOS = True
-            args.unityExe = os.path.join(args.unity, 'Unity.exe')
-        elif sys.platform.startswith('darwin'):
-            args.winOS = False
-            args.unityExe = os.path.join(args.unity, 'Unity.app/Contents/MacOS/Unity')
-        else:
-            _logInfo('Unsupported platform: %s' %sys.platform, 1)
-        
-        if args.unityExe == None or os.path.exists(args.unityExe) == False:
-            _logInfo('Unity executable not found at: %s' %args.unityExe, 1)
+    #system environment
+    if sys.platform.startswith('win32'):
+        args.winOS = True
+    elif sys.platform.startswith('darwin'):
+        args.winOS = False
     else:
-        _logInfo('Unity home path not found, use -unity argument or define it with an environment variable UNITY_HOME', 1)
+        _logInfo('Unsupported platform: %s' %sys.platform, 1)
 
     args.func(args)
     pass
@@ -646,7 +662,7 @@ class _TaskArgParser(dict):
     def __common(self):
         self.__appends('-log', self.log)
         self.__appendb('-wmode', self.wmode)
-        self.__appends('-unity', self.unity)
+        self.__appends('-unityHome', self.unityHome)
         self.__appends('-ulog', self.ulog)
         self.__appendb('-nobatch', self.nobatch)
         self.__appendb('-noquit', self.noquit)
