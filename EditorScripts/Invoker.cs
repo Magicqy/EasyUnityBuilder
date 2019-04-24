@@ -211,7 +211,14 @@ public static class Invoker
         Logger.WriteLine("Method Matched:  {0}", methodInfo.Name);
         Logger.WriteLine("---------Invoke Result---------");
         var result = methodInfo.Invoke(null, parsedParamValues.ToArray());
-        Logger.WriteLine(result != null ? result.ToString() : "null");
+        if(methodInfo.ReturnType == typeof(void))
+        {
+            Logger.WriteLine("void");
+        }
+        else
+        {
+            Logger.WriteLine(result != null ? result.ToString() : "null");
+        }
         return result;
     }
 
