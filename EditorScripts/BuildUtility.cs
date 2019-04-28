@@ -46,12 +46,16 @@ public static class _BuildUtility
             var result = BuildPipeline.BuildPlayer(levels.ToArray(), outPath, target, opt);
 #if UNITY_2017_1_OR_NEWER
             if (result.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded)
+            {
+                throw new System.Exception(string.Format("BuildResult {0}, {1} erorrs, {2} warnings",
+                    result.summary.result, result.summary.totalErrors, result.summary.totalWarnings));
+            }
 #else
             if (!string.IsNullOrEmpty(result))
-#endif
             {
-                throw new System.Exception(result.ToString());
+                throw new System.Exception(result);
             }
+#endif
         }
         else
         {

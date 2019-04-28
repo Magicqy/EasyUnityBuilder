@@ -167,8 +167,8 @@ class _Invoker:
 
         _logInfo('===Invoke===')
         _logInfo('unityPath:       %s' %unityExe)
-        _logInfo('projectPath:     %s' %projPath)
         _logInfo('unityLogPath:    %s' %unityLog)
+        _logInfo('projectPath:     %s' %projPath)
         _logInfo('batchmode:       %s' %batch)
         _logInfo('quit:            %s' %quit)
         _logInfo('')
@@ -240,7 +240,7 @@ def _buildCmd(args):
         os.makedirs(dir)
 
     ivk = _Invoker('_BuildUtility.BuildPlayer', [outPath, buildTarget, buildOpts])
-    ret = ivk.invoke(projPath, args.homePath, args.unityExe, args.ulog, not args.nobatch, not args.noquit)
+    ret = ivk.invoke(projPath, args.homePath, args.unityExe, args.unityLog, not args.nobatch, not args.noquit)
     
     #place exported project in outPath/ instead of outPath/productName/
     if ret == 0 and buildTarget == _BuildTarget.Android and _BuildOptions.AcceptExternalModifications(buildOpts) and not args.dph:
@@ -271,7 +271,7 @@ def _invokeCmd(args):
     if args.next:
         for nlist in args.next:
             ivk.append(nlist[0], nlist[1:])
-    ivk.invoke(projPath, args.homePath, args.unityExe, args.ulog, not args.nobatch, not args.noquit)
+    ivk.invoke(projPath, args.homePath, args.unityExe, args.unityLog, not args.nobatch, not args.noquit)
     pass
 
 def _packageAndroidCmd(args):
@@ -533,7 +533,7 @@ def _parse_args(explicitArgs = None):
     parser.add_argument('-log', help = 'build util log file path')
     parser.add_argument('-wmode', action = 'store_true', help = 'use w mode to open log file, by default the mode is a')
     parser.add_argument('-unityHome', help = 'unity home path')
-    parser.add_argument('-ulog', help = 'unity editor log file path')
+    parser.add_argument('-unityLog', help = 'unity editor log file path')
     parser.add_argument('-nobatch', action = 'store_true', help = 'run unity without -batchmode')
     parser.add_argument('-noquit', action = 'store_true', help = 'run unity without -quit')
 
@@ -615,13 +615,13 @@ def _run(args):
     args.homePath = os.path.dirname(sys.argv[0])
 
     #initialize logging
-    args.ulog = _fullPath(args.ulog)
+    args.unityLog = _fullPath(args.unityLog)
     args.log = _fullPath(args.log) 
     if args.log:
         dir = os.path.dirname(args.log)
         if not os.path.exists(dir):
             os.makedirs(dir)
-    _initLogging(args.homePath, args.log, args.wmode, args.ulog)
+    _initLogging(args.homePath, args.log, args.wmode, args.unityLog)
 
     #system environment
     if sys.platform.startswith('win32'):
@@ -663,7 +663,7 @@ class _TaskArgParser(dict):
         self.__appends('-log', self.log)
         self.__appendb('-wmode', self.wmode)
         self.__appends('-unityHome', self.unityHome)
-        self.__appends('-ulog', self.ulog)
+        self.__appends('-unityLog', self.unityLog)
         self.__appendb('-nobatch', self.nobatch)
         self.__appendb('-noquit', self.noquit)
         return self.cmd
@@ -763,7 +763,7 @@ def runTask(taskName, shared_args, **kwargs):
     INVOKE, BUILD, PACK_ANDROID, PACK_IOS, COPY, DEL
 
     argument name list:
-    shared:         log, wmode, ulog, unity, nobatch, noquit
+    shared:         log, wmode, unityHome, unityLog, nobatch, noquit
     invoke:         projPath, calls
     build:          projPath, buildTarget, outPath, opt, exp, dev, dph
     packandroid:    projPath, buildFile, task, var, pfx, sfx, prop, ndp

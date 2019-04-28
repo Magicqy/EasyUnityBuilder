@@ -11,9 +11,9 @@ EXPORT_PROJ = os.path.join(BUILD_PATH, 'android-proj')
 BUNDLE_ID = 'com.test.proj'
 
 shared_args = dict(
-    #unityHome = 'UNITY_HOME_PATH',
+    # unityHome = 'UNITY_HOME_PATH',
+    unityLog = os.path.join(BUILD_PATH, 'unity.log'),
     log = os.path.join(BUILD_PATH, 'build.log'),
-    ulog = os.path.join(BUILD_PATH, 'unity.log')
 )
 
 utl.runTask(utl.INVOKE, shared_args,

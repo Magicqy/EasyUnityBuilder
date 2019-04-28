@@ -14,9 +14,9 @@ PROV_FILE = 'MOBILE_PROVISION_FILE_PATH'
 KEY_CHAIN = ['CODE_SIGN_KEY_CHAIN_FILE_PATH', 'CODE_SIGN_KEY_CHAIN_PASSWORD}']
 
 shared_args = dict(
-    #unityHome = 'UNITY_HOME_PATH',
+    # unityHome = 'UNITY_HOME_PATH',
+    unityLog = os.path.join(BUILD_PATH, 'unity.log'),
     log = os.path.join(BUILD_PATH, 'build.log'),
-    ulog = os.path.join(BUILD_PATH, 'unity.log')
 )
 
 utl.runTask(utl.INVOKE, shared_args,
