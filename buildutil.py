@@ -153,11 +153,15 @@ class _Invoker:
         self.invokeList.extend(argList)
         return self
 
-    def invoke(self, projPath, homePath, unityExe, unityLog, batch = True, quit = True):
-        argList = [unityExe, '-projectPath', projPath]
-        if unityLog:
-            argList.extend(['-logFile', unityLog])
-        if batch:
+    def invoke(self, projPath, homePath, unityExe, unityLogFile, switchTarget, batchmode, quit):
+        argList = [unityExe]
+        if unityLogFile:
+            argList.extend(['-logFile', unityLogFile])
+        if switchTarget:
+            argList.extend(['-buildTarget', switchTarget])
+        if projPath:
+            argList.extend(['-projectPath', projPath])
+        if batchmode:
             argList.append('-batchmode')
         if quit:
             argList.append('-quit')
@@ -167,9 +171,10 @@ class _Invoker:
 
         _logInfo('===Invoke===')
         _logInfo('unityPath:       %s' %unityExe)
-        _logInfo('unityLogPath:    %s' %unityLog)
+        _logInfo('unityLogPath:    %s' %unityLogFile)
         _logInfo('projectPath:     %s' %projPath)
-        _logInfo('batchmode:       %s' %batch)
+        _logInfo('switchTarget:    %s' %switchTarget)
+        _logInfo('batchmode:       %s' %batchmode)
         _logInfo('quit:            %s' %quit)
         _logInfo('')
         for i in range(2, len(self.invokeList)):
@@ -240,7 +245,7 @@ def _buildCmd(args):
         os.makedirs(dir)
 
     ivk = _Invoker('_BuildUtility.BuildPlayer', [outPath, buildTarget, buildOpts])
-    ret = ivk.invoke(projPath, args.homePath, args.unityExe, args.unityLog, not args.nobatch, not args.noquit)
+    ret = ivk.invoke(projPath, args.homePath, args.unityExe, args.unityLog, args.switchTarget, not args.nobatch, not args.noquit)
     
     #place exported project in outPath/ instead of outPath/productName/
     if ret == 0 and buildTarget == _BuildTarget.Android and _BuildOptions.AcceptExternalModifications(buildOpts) and not args.dph:
@@ -271,7 +276,7 @@ def _invokeCmd(args):
     if args.next:
         for nlist in args.next:
             ivk.append(nlist[0], nlist[1:])
-    ivk.invoke(projPath, args.homePath, args.unityExe, args.unityLog, not args.nobatch, not args.noquit)
+    ivk.invoke(projPath, args.homePath, args.unityExe, args.unityLog, args.switchTarget, not args.nobatch, not args.noquit)
     pass
 
 def _packageAndroidCmd(args):
@@ -534,6 +539,8 @@ def _parse_args(explicitArgs = None):
     parser.add_argument('-wmode', action = 'store_true', help = 'use w mode to open log file, by default the mode is a')
     parser.add_argument('-unityHome', help = 'unity home path')
     parser.add_argument('-unityLog', help = 'unity editor log file path')
+    parser.add_argument('-switchTarget', choices = ['Android', 'iOS', 'Win', 'Win64', 'OSXUniversal'],
+        help = 'switch active build target before loading project')
     parser.add_argument('-nobatch', action = 'store_true', help = 'run unity without -batchmode')
     parser.add_argument('-noquit', action = 'store_true', help = 'run unity without -quit')
 
@@ -664,6 +671,7 @@ class _TaskArgParser(dict):
         self.__appendb('-wmode', self.wmode)
         self.__appends('-unityHome', self.unityHome)
         self.__appends('-unityLog', self.unityLog)
+        self.__appendb('-buildTarget', self.switchTarget)
         self.__appendb('-nobatch', self.nobatch)
         self.__appendb('-noquit', self.noquit)
         return self.cmd
@@ -763,7 +771,7 @@ def runTask(taskName, shared_args, **kwargs):
     INVOKE, BUILD, PACK_ANDROID, PACK_IOS, COPY, DEL
 
     argument name list:
-    shared:         log, wmode, unityHome, unityLog, nobatch, noquit
+    shared:         log, wmode, unityHome, unityLog, switchTarget, nobatch, noquit
     invoke:         projPath, calls
     build:          projPath, buildTarget, outPath, opt, exp, dev, dph
     packandroid:    projPath, buildFile, task, var, pfx, sfx, prop, ndp
