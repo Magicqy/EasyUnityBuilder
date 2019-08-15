@@ -50,7 +50,7 @@ class _BuildOptions:
         return buildOpts.find(_BuildOptions.AcceptExternalModificationsToPlayer) >= 0
     pass
 
-def _initLogging(homePath, logFile, logFileMode, unityLogFile):
+def _initLogging(homePath, logFile, logFileMode):
     import logging
     logger = logging.getLogger()
     for hd in logger.handlers:
@@ -153,29 +153,37 @@ class _Invoker:
         self.invokeList.extend(argList)
         return self
 
-    def invoke(self, projPath, homePath, unityExe, unityLogFile, switchTarget, batchmode, quit):
+    def invoke(self, projPath, args):
+        homePath = args.homePath
+        unityExe = args.unityExe
+        unityLog = args.unityLog
+        switchTarget = args.switchTarget
+        batchmode = not args.nobatch
+        quit = not args.noquit
+
         argList = [unityExe]
-        if unityLogFile:
-            argList.extend(['-logFile', unityLogFile])
+        if unityLog:
+            argList.extend(['-logFile', unityLog])
         if switchTarget:
             argList.extend(['-buildTarget', switchTarget])
-        if projPath:
-            argList.extend(['-projectPath', projPath])
         if batchmode:
             argList.append('-batchmode')
         if quit:
             argList.append('-quit')
+        if projPath:
+            argList.extend(['-projectPath', projPath])
+
         self.invokeLogFile = os.path.join(projPath, 'invoke.log')
         argList.extend(['-invokeLog', self.invokeLogFile])
         argList.extend(self.invokeList)
 
         _logInfo('===Invoke===')
-        _logInfo('unityPath:       %s' %unityExe)
-        _logInfo('unityLogPath:    %s' %unityLogFile)
-        _logInfo('projectPath:     %s' %projPath)
+        _logInfo('unityExePath:    %s' %unityExe)
+        _logInfo('unityLogPath:    %s' %unityLog)
         _logInfo('switchTarget:    %s' %switchTarget)
         _logInfo('batchmode:       %s' %batchmode)
         _logInfo('quit:            %s' %quit)
+        _logInfo('projectPath:     %s' %projPath)
         _logInfo('')
         for i in range(2, len(self.invokeList)):
             _logInfo(self.invokeList[i])
@@ -245,7 +253,7 @@ def _buildCmd(args):
         os.makedirs(dir)
 
     ivk = _Invoker('_BuildUtility.BuildPlayer', [outPath, buildTarget, buildOpts])
-    ret = ivk.invoke(projPath, args.homePath, args.unityExe, args.unityLog, args.switchTarget, not args.nobatch, not args.noquit)
+    ret = ivk.invoke(projPath, args)
     
     #place exported project in outPath/ instead of outPath/productName/
     if ret == 0 and buildTarget == _BuildTarget.Android and _BuildOptions.AcceptExternalModifications(buildOpts) and not args.dph:
@@ -276,7 +284,7 @@ def _invokeCmd(args):
     if args.next:
         for nlist in args.next:
             ivk.append(nlist[0], nlist[1:])
-    ivk.invoke(projPath, args.homePath, args.unityExe, args.unityLog, args.switchTarget, not args.nobatch, not args.noquit)
+    ivk.invoke(projPath, args)
     pass
 
 def _packageAndroidCmd(args):
@@ -628,7 +636,7 @@ def _run(args):
         dir = os.path.dirname(args.log)
         if not os.path.exists(dir):
             os.makedirs(dir)
-    _initLogging(args.homePath, args.log, args.wmode, args.unityLog)
+    _initLogging(args.homePath, args.log, args.wmode)
 
     #system environment
     if sys.platform.startswith('win32'):
