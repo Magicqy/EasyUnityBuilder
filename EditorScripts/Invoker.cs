@@ -2,8 +2,10 @@
  *  Invoke static method from command-line
  * 
  *  Usage:
- *      $UNITY_HOME/Unity.exe -projectPath $PROJECT_PATH -batchmode -quit [-invokeLog $LOG_PATH] \
- *          -executeMethod Invoker.InvokeCommandLine $METHOD $PARAMETERS [-next $METHOD $PARAMETERS]
+ *      $UNITY_HOME/Unity.exe [-batchmode] [-quit] -projectPath $PROJECT_PATH \
+            [-invokeLog $LOG_PATH] \
+ *          -executeMethod Invoker.InvokeCommandLine $METHOD $PARAMETERS \
+            [-next $METHOD $PARAMETERS]
  *      Use '-next' to chain the invoke.
  *      
  *      METHOD:
