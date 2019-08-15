@@ -649,7 +649,7 @@ PACK_IOS = 'packios'
 COPY = 'copy'
 DEL = 'del'
 
-class _TaskArgParser(dict):
+class _ScriptTaskArgParser(dict):
     def parse(self):
         cmd = self.__common()
         if cmd == INVOKE:
@@ -671,7 +671,7 @@ class _TaskArgParser(dict):
         self.__appendb('-wmode', self.wmode)
         self.__appends('-unityHome', self.unityHome)
         self.__appends('-unityLog', self.unityLog)
-        self.__appendb('-buildTarget', self.switchTarget)
+        self.__appends('-switchTarget', self.switchTarget)
         self.__appendb('-nobatch', self.nobatch)
         self.__appendb('-noquit', self.noquit)
         return self.cmd
@@ -739,9 +739,9 @@ class _TaskArgParser(dict):
     def __init__(self, o, **kwargs):
         self.__arglist = []
         if o:
-            return super(_TaskArgParser, self).__init__(o, **kwargs)
+            return super(_ScriptTaskArgParser, self).__init__(o, **kwargs)
         else:
-            return super(_TaskArgParser, self).__init__(kwargs)
+            return super(_ScriptTaskArgParser, self).__init__(kwargs)
 
     def __getattr__(self, arg):
         return self[arg] if arg in self else None
@@ -779,7 +779,7 @@ def runTask(taskName, shared_args, **kwargs):
     copy:           src, dst, append, stat
     del:            src, sfx
     '''
-    parser = _TaskArgParser(shared_args, cmd = taskName)
+    parser = _ScriptTaskArgParser(shared_args, cmd = taskName)
     parser.update(kwargs)
     explictArgs = parser.parse()
     _run(_parse_args(explictArgs))
