@@ -73,6 +73,10 @@ public static class Invoker
             {
                 logFilePath = cmdArgs[index + 1];
             }
+            if (logFilePath != null)
+            {
+                logFilePath = Path.Combine(Path.GetDirectoryName(Application.dataPath), logFilePath);
+            }
 
             index = Array.IndexOf(cmdArgs, INVOKER_METHOD_NAME);
             if (index > 0 && index + 1 < cmdArgs.Length)
@@ -178,7 +182,7 @@ public static class Invoker
         Logger.WriteLine("AssemblyName:     {0}", assemblyName);
         Logger.WriteLine("TypeName:         {0}", typeName);
         Logger.WriteLine("MethodName:       {0}", methodName);
-        Logger.WriteLine("ParameterCount:  {0}", paramStrings.Count);
+        Logger.WriteLine("ParameterCount:   {0}", paramStrings.Count);
         for (int i = 0; i < paramStrings.Count; i++)
         {
             Logger.WriteLine("[{0}]  =>  {1}", i + 1, paramStrings[i]);
@@ -517,7 +521,7 @@ public static class Invoker
             }
             else
             {
-                var sw = new StreamWriter(logFilePath, true);
+                var sw = new StreamWriter(logFilePath, false);
                 sw.AutoFlush = true;
                 logWriter = sw;
             }

@@ -143,14 +143,15 @@ def _del(path, alsoDelSuffixes = None):
 
 class _Invoker:
     def __init__(self, methodName, argList):
-        self.invokeList = ['-executeMethod', 'Invoker.InvokeCommandLine', methodName]
-        self.invokeList.extend(argList)
+        self.__invokeList = ['-executeMethod', 'Invoker.InvokeCommandLine', methodName]
+        self.__invokeList.extend(argList)
+        self.__invokeLogFile = 'Library/LastInvoke.log'
         pass
 
     def append(self, methodName, argList):
-        self.invokeList.append('-next')
-        self.invokeList.append(methodName)
-        self.invokeList.extend(argList)
+        self.__invokeList.append('-next')
+        self.__invokeList.append(methodName)
+        self.__invokeList.extend(argList)
         return self
 
     def invoke(self, projPath, args):
@@ -173,9 +174,8 @@ class _Invoker:
         if projPath:
             argList.extend(['-projectPath', projPath])
 
-        self.invokeLogFile = os.path.join(projPath, 'invoke.log')
-        argList.extend(['-invokeLog', self.invokeLogFile])
-        argList.extend(self.invokeList)
+        argList.extend(['-invokeLog', self.__invokeLogFile])
+        argList.extend(self.__invokeList)
 
         _logInfo('===Invoke===')
         _logInfo('unityExePath:    %s' %unityExe)
@@ -185,8 +185,8 @@ class _Invoker:
         _logInfo('quit:            %s' %quit)
         _logInfo('projectPath:     %s' %projPath)
         _logInfo('')
-        for i in range(2, len(self.invokeList)):
-            _logInfo(self.invokeList[i])
+        for i in range(2, len(self.__invokeList)):
+            _logInfo(self.__invokeList[i])
         _logInfo('')
         
         if os.path.isdir(projPath):
@@ -195,7 +195,7 @@ class _Invoker:
                 _logInfo(' '.join(argList))
                 ret = subprocess.call(argList)
                 if ret != 0:
-                    _logInfo('execute fail with retcode: %s' %ret, ret)
+                    _logInfo('execute failed with code: %s' %ret, ret)
                 return ret
             finally:
                 self._cleanup(projPath)
@@ -213,14 +213,18 @@ class _Invoker:
 
     def _cleanup(self, projPath):
         _del(os.path.join(projPath, 'Assets/_UnityBuildUtility'), ['.meta'])
-        path = self.invokeLogFile
-        if path and os.path.exists(path):
-            logFile = open(path)
+        logFilePath = os.path.join(projPath, self.__invokeLogFile)
+        if os.path.exists(logFilePath):
+            logFileHandle = None
             try:
-                _logInfo(logFile.read())
+                logFileHandle = open(logFilePath)
+                _logInfo('')
+                _logInfo(logFileHandle.read())
             finally:
-                logFile.close()
-                _del(path)
+                if logFileHandle:
+                    logFileHandle.close()
+                _del(logFilePath)
+            pass
         pass
     pass
 
