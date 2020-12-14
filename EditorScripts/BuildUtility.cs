@@ -1,38 +1,35 @@
-﻿using System.Collections.Generic;
-using System.IO;
-using UnityEngine;
-using UnityEditor;
+﻿using UnityEditor;
 #if UNITY_IOS
 using UnityEditor.iOS.Xcode;
 #endif
+using System.Collections.Generic;
 
 //try avoid type name conflict with prefix
 public static class _BuildUtility
 {
-    public static void DelSymbolForGroup(BuildTargetGroup group, string symbol)
+    public static void AppendSymbolsForGroup(BuildTargetGroup group, string symbols)
     {
-        var defines = PlayerSettings.GetScriptingDefineSymbolsForGroup(group);
-        var symbols = string.IsNullOrEmpty(defines) ? new List<string>() : new List<string>(defines.Split(';'));
-        symbols.Remove(symbol);
-        PlayerSettings.SetScriptingDefineSymbolsForGroup(group, string.Join(";", symbols.ToArray()));
+        var lastSymbols = PlayerSettings.GetScriptingDefineSymbolsForGroup(group);
+        var newSymbols = string.IsNullOrEmpty(symbols) ? new List<string>() : new List<string>(symbols.Split(';'));
+        newSymbols.RemoveAll(item => lastSymbols.Contains(item));
+        newSymbols.Insert(0, lastSymbols);
+        PlayerSettings.SetScriptingDefineSymbolsForGroup(group, string.Join(";", newSymbols.ToArray()));
     }
 
-    public static void AddSymbolForGroup(BuildTargetGroup group, string symbol)
+    public static void DeleteSymbolsForGroup(BuildTargetGroup group, string symbols)
     {
-        var defines = PlayerSettings.GetScriptingDefineSymbolsForGroup(group);
-        var symbols = string.IsNullOrEmpty(defines) ? new List<string>() : new List<string>(defines.Split(';'));
-        if (!symbols.Contains(symbol))
-        {
-            symbols.Add(symbol);
-        }
-        PlayerSettings.SetScriptingDefineSymbolsForGroup(group, string.Join(";", symbols.ToArray()));
+        var lastSymbols = PlayerSettings.GetScriptingDefineSymbolsForGroup(group);
+        var newSymbols = string.IsNullOrEmpty(lastSymbols) ? new List<string>() : new List<string>(lastSymbols.Split(';'));
+        var deleteSymbols = string.IsNullOrEmpty(symbols) ? new List<string>() : new List<string>(symbols.Split(';'));
+        newSymbols.RemoveAll(item => deleteSymbols.Contains(item));
+        PlayerSettings.SetScriptingDefineSymbolsForGroup(group, string.Join(";", newSymbols.ToArray()));
     }
 
     public static void BuildPlayer(string outPath, BuildTarget target, BuildOptions opt)
     {
         if (target != EditorUserBuildSettings.activeBuildTarget)
         {
-            EditorUserBuildSettings.SwitchActiveBuildTarget(target);
+            throw new System.Exception(string.Format("activeBuildTarget is not {0}", target));
         }
 
         List<string> levels = new List<string>();
@@ -41,6 +38,7 @@ public static class _BuildUtility
             if (s.enabled)
                 levels.Add(s.path);
         }
+
         if (levels.Count > 0)
         {
             var result = BuildPipeline.BuildPlayer(levels.ToArray(), outPath, target, opt);
@@ -72,7 +70,7 @@ public static class _BuildUtility
     }
 
 #if UNITY_IOS
-    public static void ModifyXCodeProject(BuildTarget buildTarget, string xprojPath)
+    public static void EnableXCodeProjectBitCode(BuildTarget buildTarget, string xprojPath)
     {
         if (buildTarget == BuildTarget.iOS)
         {
@@ -91,5 +89,4 @@ public static class _BuildUtility
         }
     }
 #endif
-
 }
