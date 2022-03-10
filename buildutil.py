@@ -158,15 +158,15 @@ class _Invoker:
         homePath = args.homePath
         unityExe = args.unityExe
         unityLog = args.unityLog
-        switchTarget = args.switchTarget
+        buildTarget = args.buildTarget
         batchmode = not args.nobatch
         quit = not args.noquit
 
         argList = [unityExe]
         if unityLog:
             argList.extend(['-logFile', unityLog])
-        if switchTarget:
-            argList.extend(['-buildTarget', switchTarget])
+        if buildTarget:
+            argList.extend(['-buildTarget', buildTarget])
         if batchmode:
             argList.append('-batchmode')
         if quit:
@@ -180,7 +180,7 @@ class _Invoker:
         _logInfo('===Invoke===')
         _logInfo('unityExePath:    %s' %unityExe)
         _logInfo('unityLogPath:    %s' %unityLog)
-        _logInfo('switchTarget:    %s' %switchTarget)
+        _logInfo('buildTarget:     %s' %buildTarget)
         _logInfo('batchmode:       %s' %batchmode)
         _logInfo('quit:            %s' %quit)
         _logInfo('projectPath:     %s' %projPath)
@@ -551,7 +551,7 @@ def _parse_args(explicitArgs = None):
     parser.add_argument('-wmode', action = 'store_true', help = 'use w mode to open log file, by default the mode is a')
     parser.add_argument('-unityHome', help = 'unity home path')
     parser.add_argument('-unityLog', help = 'unity editor log file path')
-    parser.add_argument('-switchTarget', choices = ['Android', 'iOS', 'Win', 'Win64', 'OSXUniversal'],
+    parser.add_argument('-buildTarget', choices = ['Android', 'iOS', 'Win', 'Win64', 'OSXUniversal'],
         help = 'switch active build target before loading project')
     parser.add_argument('-nobatch', action = 'store_true', help = 'run unity without -batchmode')
     parser.add_argument('-noquit', action = 'store_true', help = 'run unity without -quit')
@@ -683,7 +683,7 @@ class _ScriptTaskArgParser(dict):
         self.__appendb('-wmode', self.wmode)
         self.__appends('-unityHome', self.unityHome)
         self.__appends('-unityLog', self.unityLog)
-        self.__appends('-switchTarget', self.switchTarget)
+        self.__appends('-buildTarget', self.buildTarget)
         self.__appendb('-nobatch', self.nobatch)
         self.__appendb('-noquit', self.noquit)
         return self.cmd
@@ -783,7 +783,7 @@ def runTask(taskName, shared_args, **kwargs):
     INVOKE, BUILD, PACK_ANDROID, PACK_IOS, COPY, DEL
 
     argument name list:
-    shared:         log, wmode, unityHome, unityLog, switchTarget, nobatch, noquit
+    shared:         log, wmode, unityHome, unityLog, buildTarget, nobatch, noquit
     invoke:         projPath, calls
     build:          projPath, buildTarget, outPath, opt, exp, dev, dph
     packandroid:    projPath, buildFile, task, var, pfx, sfx, prop, ndp
