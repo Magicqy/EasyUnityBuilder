@@ -173,7 +173,7 @@ class _Invoker:
         if quit:
             argList.append('-quit')
         if unityExtraArgs:
-            argList.append(unityExtraArgs)
+            argList.extend(unityExtraArgs.split(' '))
         if projPath:
             argList.extend(['-projectPath', projPath])
 
@@ -559,7 +559,7 @@ def _parse_args(explicitArgs = None):
         help = 'switch active build target before loading project')
     parser.add_argument('-nobatch', action = 'store_true', help = 'run unity without -batchmode')
     parser.add_argument('-noquit', action = 'store_true', help = 'run unity without -quit')
-    parser.add_argument('-unityExtraArgs', help = 'run unity with extra command line arguments, usage: -unityExtraArgs="-arg1 xxx -arg2 -arg3 xxx"')
+    parser.add_argument('-unityExtraArgs', help = 'run unity with extra command line arguments, split with space, usage: -unityExtraArgs "-arg1 xxx -arg2 -arg3 xxx"')
 
     subparsers = parser.add_subparsers(help = 'sub-command list')
     invoke = subparsers.add_parser('invoke', help = 'invoke method with arguments')
