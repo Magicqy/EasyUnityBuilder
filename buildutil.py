@@ -161,6 +161,7 @@ class _Invoker:
         buildTarget = args.buildTarget
         batchmode = not args.nobatch
         quit = not args.noquit
+        unityExtraArgs = args.unityExtraArgs
 
         argList = [unityExe]
         if unityLog:
@@ -171,6 +172,8 @@ class _Invoker:
             argList.append('-batchmode')
         if quit:
             argList.append('-quit')
+        if unityExtraArgs:
+            argList.append(unityExtraArgs)
         if projPath:
             argList.extend(['-projectPath', projPath])
 
@@ -183,6 +186,7 @@ class _Invoker:
         _logInfo('buildTarget:     %s' %buildTarget)
         _logInfo('batchmode:       %s' %batchmode)
         _logInfo('quit:            %s' %quit)
+        _logInfo('unityExtraArgs:  %s' %unityExtraArgs)
         _logInfo('projectPath:     %s' %projPath)
         _logInfo('')
         for i in range(2, len(self.__invokeList)):
@@ -555,6 +559,7 @@ def _parse_args(explicitArgs = None):
         help = 'switch active build target before loading project')
     parser.add_argument('-nobatch', action = 'store_true', help = 'run unity without -batchmode')
     parser.add_argument('-noquit', action = 'store_true', help = 'run unity without -quit')
+    parser.add_argument('-unityExtraArgs', help = 'run unity with extra command line arguments, usage: -unityExtraArgs="-arg1 xxx -arg2 -arg3 xxx"')
 
     subparsers = parser.add_subparsers(help = 'sub-command list')
     invoke = subparsers.add_parser('invoke', help = 'invoke method with arguments')
@@ -783,7 +788,7 @@ def runTask(taskName, shared_args, **kwargs):
     INVOKE, BUILD, PACK_ANDROID, PACK_IOS, COPY, DEL
 
     argument name list:
-    shared:         log, wmode, unityHome, unityLog, buildTarget, nobatch, noquit
+    shared:         log, wmode, unityHome, unityLog, buildTarget, nobatch, noquit, unityExtraArgs
     invoke:         projPath, calls
     build:          projPath, buildTarget, outPath, opt, exp, dev, dph
     packandroid:    projPath, buildFile, task, var, pfx, sfx, prop, ndp
